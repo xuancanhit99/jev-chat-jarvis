@@ -14,7 +14,7 @@ import org.json.JSONObject
 class ReplyClient(private val prefs: Prefs) {
 
     /**
-     * Exactly 3 varied candidate replies in Chinese.
+     * Exactly 3 varied candidate replies in the language of the latest message.
      *
      * @param ctx D-stage knowledge context. When present its background and
      *        history are prepended to the prompt with an instruction to stay
@@ -22,13 +22,14 @@ class ReplyClient(private val prefs: Prefs) {
      */
     fun draft(snapshot: ChatSnapshot, relationship: String, ctx: ChatContext? = null): List<String> {
         val convo = snapshot.messages.takeLast(10).joinToString("\n") {
-            (if (it.side == "me") "我" else "对方") + "：" + it.text
+            (if (it.side == "me") "Me: " else "Other: ") + it.text
         }
-        val sys = "你是中文即时通讯回复助手。只输出一个 JSON 数组，含且仅含 3 条候选回复文本，" +
-            "三条策略要有区别（例如：一条稳妥承接、一条给具体行动或承诺、一条简短低姿态）。" +
-            "每条不超过 40 字，口语、自然、像真人在聊天软件里发消息。不要解释，不要加引号以外的内容，直接输出 JSON 数组。"
+        val sys = "You are a chat reply assistant. Return only a JSON array containing exactly 3 candidate reply strings. " +
+            "Use three distinct strategies: safe acknowledgment, a concrete action or commitment, and a brief low-key reply. " +
+            "Keep each reply under 40 words, natural and conversational. Use the same language as the latest message from the other person. " +
+            "Do not explain anything outside the JSON array."
         val user = knowledgeBlock(relationship, ctx) +
-            "关系：$relationship\n\n最近对话：\n$convo\n\n请给出 3 条候选回复。"
+            "Relationship: $relationship\n\nRecent conversation:\n$convo\n\nReturn 3 candidate replies."
         return parseThree(chat(sys, user, temperature = 0.8))
     }
 
@@ -39,13 +40,13 @@ class ReplyClient(private val prefs: Prefs) {
         val history = ctx.history
         if (background.isBlank() && history.isEmpty()) return ""
         val sb = StringBuilder()
-        sb.append("以下是关于我和对方的背景与知识库，回复必须与之一致，")
-            .append("可以直接引用其中事实，不要编造知识库里没有的事实。\n")
+        sb.append("The following is background and knowledge about the user and the other person. Keep replies consistent with it, ")
+            .append("and do not invent facts that are not present.\n")
         if (background.isNotBlank()) sb.append(background).append('\n')
         if (history.isNotEmpty()) {
-            sb.append("\n更早的聊天记录（越靠下越新）：\n")
+            sb.append("\nEarlier chat history (newer messages are lower):\n")
             history.takeLast(prefs.contextHistoryCount.coerceIn(0, 100)).forEach {
-                sb.append(if (it.side == "me") "我：" else "对方：").append(it.text).append('\n')
+                sb.append(if (it.side == "me") "Me: " else "Other person: ").append(it.text).append('\n')
             }
         }
         sb.append('\n')
@@ -58,13 +59,13 @@ class ReplyClient(private val prefs: Prefs) {
      * the summary prompt happens to be.
      */
     fun ping(): String =
-        chat("你是连通性测试助手，只按要求回答，不要解释。", "请只回复两个字：收到", temperature = 0.0).trim()
+        chat("You are a connectivity test assistant. Follow the request exactly and do not explain.", "Reply with exactly: received", temperature = 0.0).trim()
 
     /** Condense a block of text (used by the D-stage contact auto-summary). */
     fun summarize(text: String): String {
         if (text.isBlank()) return ""
-        val sys = "你是中文摘要助手。把给到的聊天记录压缩成不超过 120 字的第三人称要点摘要，" +
-            "只保留事实、偏好、承诺和待办，不要评论，不要编造。直接输出摘要正文。"
+        val sys = "You summarize chat history in third person in no more than 120 words. " +
+            "Keep only facts, preferences, commitments and tasks. Do not comment or invent. Output only the summary."
         return chat(sys, text, temperature = 0.2).trim()
     }
 
@@ -78,6 +79,8 @@ class ReplyClient(private val prefs: Prefs) {
             .put("model", prefs.replyModel)
             .put("messages", messages)
             .put("temperature", temperature)
+            // Some OpenAI-compatible gateways default to SSE when omitted.
+            .put("stream", false)
         val resp = HttpJson.post(url, prefs.effectiveReplyKey(), body, Route.REPLY, HttpJson.headersFor(url))
         return resp.optJSONArray("choices")?.optJSONObject(0)
             ?.optJSONObject("message")?.optString("content") ?: ""
@@ -92,7 +95,7 @@ class ReplyClient(private val prefs: Prefs) {
                 val out = ArrayList<String>()
                 for (i in 0 until arr.length()) out.add(arr.getString(i).trim())
                 if (out.size >= 3) return out.take(3)
-                while (out.size < 3) out.add("（稍等，我看下）")
+                while (out.size < 3) out.add("One moment, let me check.")
                 return out
             } catch (_: Exception) { }
         }
@@ -100,7 +103,7 @@ class ReplyClient(private val prefs: Prefs) {
         val lines = content.split("\n").map { it.trim().trimStart('-', '*', '1', '2', '3', '.', ' ', '"') }
             .filter { it.isNotBlank() }
         val out = lines.take(3).toMutableList()
-        while (out.size < 3) out.add("（稍等，我看下）")
+        while (out.size < 3) out.add("One moment, let me check.")
         return out
     }
 }

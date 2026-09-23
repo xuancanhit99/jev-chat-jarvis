@@ -27,8 +27,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var prefs: Prefs
     private lateinit var container: LinearLayout
-    private val a11yComponent =
-        "com.jev.probe/com.google.android.accessibility.selecttospeak.SelectToSpeakService"
+    private val a11yComponent: String
+        get() = "$packageName/com.google.android.accessibility.selecttospeak.SelectToSpeakService"
 
     private val accent = Color.parseColor("#3A7AFE")
     private val green = Color.parseColor("#16A34A")
@@ -62,8 +62,8 @@ class MainActivity : AppCompatActivity() {
     private fun build() {
         container.removeAllViews()
 
-        container.addView(text("Jev 聊天助手", 24f, ink, bold = true))
-        container.addView(text("在聊天 App 旁读对方消息（已支持微信、QQ、X、飞书），给出判断和候选回复。发送始终由你手动点。",
+        container.addView(text("Jev Chat Assistant", 24f, ink, bold = true))
+        container.addView(text("Read messages beside your chat apps (WeChat, QQ, X and Lark are supported), then show analysis and reply suggestions. You always send manually.",
             13f, sub).apply { setPadding(0, dp(6), 0, dp(16)) })
 
         val a11y = isA11yEnabled()
@@ -75,22 +75,22 @@ class MainActivity : AppCompatActivity() {
         container.addView(statusCard(ready, a11y, overlay, key))
 
         // Permission checklist
-        container.addView(sectionLabel("权限设置"))
-        container.addView(permCard("无障碍权限", "读取当前聊天窗口的消息文字", a11y) {
+        container.addView(sectionLabel("Permissions"))
+        container.addView(permCard("Accessibility", "Read text from the current chat window", a11y) {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         })
-        container.addView(permCard("悬浮窗权限", "在聊天窗口上方显示分析卡片", overlay) {
+        container.addView(permCard("Overlay", "Show the analysis panel above your chat", overlay) {
             startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
         })
-        container.addView(permCard("自启动 + 省电无限制", "小米/HyperOS 必做，否则服务被冻结、读不到消息", null) {
+        container.addView(permCard("Autostart + unrestricted battery", "Required on Xiaomi/HyperOS or the reader may be frozen", null) {
             runCatching {
                 startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
             }
         })
 
         // Actions
-        container.addView(sectionLabel("其他"))
-        container.addView(actionRow("设置", "密钥 · 模型 · 关系 · 透明度 · 会话白名单") {
+        container.addView(sectionLabel("Other"))
+        container.addView(actionRow("Settings", "Keys · models · relationship · opacity · chat whitelist") {
             startActivity(Intent(this, SettingsActivity::class.java))
         })
 
@@ -111,21 +111,21 @@ class MainActivity : AppCompatActivity() {
         head.addView(dot(if (ready) green else red).apply {
             (layoutParams as LinearLayout.LayoutParams).rightMargin = dp(10)
         })
-        head.addView(text(if (ready) "已就绪，可以用了" else "尚未就绪", 16f, if (ready) green else ink, bold = true))
+        head.addView(text(if (ready) "Ready to use" else "Not ready", 16f, if (ready) green else ink, bold = true))
         c.addView(head)
-        c.addView(checkLine("无障碍", a11y))
-        c.addView(checkLine("悬浮窗", overlay))
-        c.addView(checkLine("密钥", key, okWord = "已设", noWord = "未设"))
+        c.addView(checkLine("Accessibility", a11y))
+        c.addView(checkLine("Overlay", overlay))
+        c.addView(checkLine("API key", key, okWord = " set", noWord = " not set"))
         // History recording is opt-in (off by default). Mention it here, never block on it.
         if (!prefs.contextEnabled) {
-            c.addView(text("关联上下文未开启，可在设置里开启", 12f, sub).apply {
+            c.addView(text("Conversation context is off. You can enable it in Settings.", 12f, sub).apply {
                 setPadding(0, dp(8), 0, 0)
             })
         }
         return c
     }
 
-    private fun checkLine(label: String, ok: Boolean, okWord: String = "已开", noWord: String = "未开"): View {
+    private fun checkLine(label: String, ok: Boolean, okWord: String = " enabled", noWord: String = " disabled"): View {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
             setPadding(0, dp(5), 0, 0)
@@ -146,9 +146,9 @@ class MainActivity : AppCompatActivity() {
         }
         left.addView(text(title, 15f, ink, bold = true))
         left.addView(text(desc, 12f, sub).apply { setPadding(0, dp(3), 0, 0) })
-        if (granted == true) left.addView(text("✓ 已开启", 12f, green, bold = true).apply { setPadding(0, dp(4), 0, 0) })
+        if (granted == true) left.addView(text("✓ Enabled", 12f, green, bold = true).apply { setPadding(0, dp(4), 0, 0) })
         row.addView(left)
-        row.addView(btn(if (granted == true) "已开启" else "去开启", granted != true, onClick))
+        row.addView(btn(if (granted == true) "Enabled" else "Open settings", granted != true, onClick))
         c.addView(row)
         return c
     }
@@ -171,7 +171,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun bigToggle(on: Boolean): View {
         return TextView(this).apply {
-            text = if (on) "助手已开启 · 点击关闭" else "助手已关闭 · 点击开启"
+            text = if (on) "Assistant enabled · tap to disable" else "Assistant disabled · tap to enable"
             textSize = 15f; gravity = Gravity.CENTER; setTypeface(typeface, Typeface.BOLD)
             setTextColor(if (on) Color.WHITE else accent)
             background = roundBg(dp(14), if (on) accent else Color.WHITE, stroke = !on)

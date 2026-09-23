@@ -69,7 +69,7 @@ class OverlayController(private val ctx: Context) {
     private var lastFill: ((String) -> Unit)? = null
 
     /** Set when [showReplies] was handed a draftAndRank failure, so the panel
-     *  can say so instead of silently showing "（未生成候选回复）". */
+     *  can say so instead of silently showing "(No reply candidates generated)". */
     private var replyError: String? = null
 
     private fun dp(v: Int) = TypedValue.applyDimension(
@@ -164,7 +164,7 @@ class OverlayController(private val ctx: Context) {
         // Header
         val header = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         header.addView(TextView(ctx).apply {
-            text = "Jev 分析"; setTextColor(Color.parseColor("#111827")); textSize = 15f
+            text = "Jev Analysis"; setTextColor(Color.parseColor("#111827")); textSize = 15f
             setTypeface(typeface, Typeface.BOLD)
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
@@ -240,11 +240,11 @@ class OverlayController(private val ctx: Context) {
             setPadding(dp(4), dp(4), dp(4), dp(4))
             layoutParams = FrameLayout.LayoutParams(dp(196), ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(56) }
         }
-        menu.addView(menuItem("截屏识别一次") { root?.removeView(menu); onOcrCapture?.invoke() })
-        menu.addView(menuItem("把当前会话存为联系人") { onSaveContact?.invoke(); root?.removeView(menu) })
-        menu.addView(menuItem("打开设置") { openSettings(); root?.removeView(menu) })
-        menu.addView(menuItem("隐藏助手（本次）") { hide() })
-        menu.addView(menuItem("取消") { root?.removeView(menu) })
+        menu.addView(menuItem("OCR this screen once") { root?.removeView(menu); onOcrCapture?.invoke() })
+        menu.addView(menuItem("Save current chat as contact") { onSaveContact?.invoke(); root?.removeView(menu) })
+        menu.addView(menuItem("Open settings") { openSettings(); root?.removeView(menu) })
+        menu.addView(menuItem("Hide assistant for now") { hide() })
+        menu.addView(menuItem("Cancel") { root?.removeView(menu) })
         root?.addView(menu)
     }
 
@@ -293,7 +293,7 @@ class OverlayController(private val ctx: Context) {
         // stale conversation) — either way an empty panel must never stay
         // literally blank.
         if (lastJudgment == null || contentBox?.childCount == 0) {
-            setContent(listOf(bigButton("分析当前对话") { onManualAnalyze?.invoke() }))
+            setContent(listOf(bigButton("Analyze current chat") { onManualAnalyze?.invoke() }))
         }
     }
 
@@ -302,7 +302,7 @@ class OverlayController(private val ctx: Context) {
      * conversation. Call this before showing anything for a different chat
      * window (a different app, or new content in the same one) — otherwise a
      * leftover [lastJudgment] from a prior conversation can keep [showIdle]
-     * from putting the "分析当前对话" button back, and a leftover [lastFill]
+     * from putting the "Analyze current chat" button back, and a leftover [lastFill]
      * could fill the wrong chat's input box.
      */
     fun resetForNewConversation() {
@@ -327,7 +327,7 @@ class OverlayController(private val ctx: Context) {
         ensureRoot(); bubble?.alpha = 1f
         ctxNotes = 0; ctxHistory = 0   // counts for the round that is starting
         replyError = null              // this round has not failed (yet)
-        setContent(listOf(hint("分析中…")))
+        setContent(listOf(hint("Analyzing…")))
         if (!expanded) toggle()
     }
 
@@ -352,7 +352,7 @@ class OverlayController(private val ctx: Context) {
     fun showError(msg: String) {
         ensureRoot(); bubble?.alpha = 1f
         setContent(listOf(
-            line("出错了", "#DC2626", 14f, true),
+            line("Something went wrong", "#DC2626", 14f, true),
             hint(msg)))
     }
 
@@ -391,8 +391,8 @@ class OverlayController(private val ctx: Context) {
 
         // What context this read was based on (knowledge base / remembered history).
         views.add(hint(
-            if (ctxNotes == 0 && ctxHistory == 0) "未用知识库"
-            else "知识库 $ctxNotes 条 · 历史 $ctxHistory 条"))
+            if (ctxNotes == 0 && ctxHistory == 0) "No knowledge base used"
+            else "Knowledge base: $ctxNotes · history: $ctxHistory"))
 
         // How this snapshot was captured, when it changes how to read it.
         noteText?.let { if (it.isNotBlank()) views.add(hint(it)) }
@@ -405,28 +405,28 @@ class OverlayController(private val ctx: Context) {
         }
         // Intent headline.
         a.trueIntent?.let {
-            views.add(line("对方真实意图：${INTENT[it.choice] ?: it.choice}", "#111827", 15f, true))
-            views.add(hint("把握 ${(it.confidence * 100).roundToInt()}%"))
+            views.add(line("Intent of the other person: ${INTENT[it.choice] ?: it.choice}", "#111827", 15f, true))
+            views.add(hint("Confidence ${(it.confidence * 100).roundToInt()}%"))
         }
         // Compact secondary line: needs · action · reply-now.
         val bits = ArrayList<String>()
-        a.sheNeeds?.let { bits.add("要${(NEEDS[it.choice] ?: it.choice)}") }
+        a.sheNeeds?.let { bits.add("Needs: ${(NEEDS[it.choice] ?: it.choice)}") }
         a.bestAction?.let { bits.add(ACTION[it.choice] ?: it.choice) }
-        a.shouldReplyNow?.let { bits.add(if (it >= 0.5) "可给实质" else "先别给实质") }
+        a.shouldReplyNow?.let { bits.add(if (it >= 0.5) "Substance is appropriate" else "Hold off on substance") }
         if (bits.isNotEmpty()) views.add(line(bits.joinToString("  ·  "), "#374151", 13f))
-        a.tensionResolved?.let { if (it >= 0.7) views.add(line("✓ 紧张已缓解", "#16A34A", 12f)) }
+        a.tensionResolved?.let { if (it >= 0.7) views.add(line("✓ Tension has eased", "#16A34A", 12f)) }
 
         views.add(divider())
-        views.add(line("候选回复（Jev 排序）", "#9CA3AF", 12f))
+        views.add(line("Reply candidates (ranked by Jev)", "#9CA3AF", 12f))
         if (generating) {
-            views.add(hint("生成中…"))
+            views.add(hint("Generating…"))
         } else {
             val fill = lastFill ?: {}
             a.rankedReplies.forEachIndexed { i, r ->
                 views.add(replyCard(i + 1, r.text, (r.prob * 100).roundToInt(), fill))
             }
             if (a.rankedReplies.isEmpty()) {
-                val msg = replyError?.let { "回复接口出错：$it" } ?: "（未生成候选回复）"
+                val msg = replyError?.let { "Reply API error: $it" } ?: "(No reply candidates generated)"
                 views.add(hint(msg))
             }
         }
@@ -443,7 +443,7 @@ class OverlayController(private val ctx: Context) {
             setPadding(0, 0, 0, dp(6))
         }
         row.addView(TextView(ctx).apply {
-            text = "危险 $lvl/$max"
+            text = "Risk $lvl/$max"
             setTextColor(Color.WHITE); textSize = 13f; setTypeface(typeface, Typeface.BOLD)
             setPadding(dp(10), dp(4), dp(10), dp(4))
             background = card(20, color)
@@ -475,9 +475,9 @@ class OverlayController(private val ctx: Context) {
             setPadding(0, dp(3), 0, dp(7)); setLineSpacing(dp(2).toFloat(), 1f)
         })
         val btns = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
-        btns.addView(pill("复制", false) { copy(text) })
+        btns.addView(pill("Copy", false) { copy(text) })
         // Fill, then collapse so the input box + keyboard are visible to review/send.
-        btns.addView(pill("填入", true) { android.util.Log.d("JEVASSIST", "overlay: fill tapped"); onFill(text); if (expanded) toggle() })
+        btns.addView(pill("Fill", true) { android.util.Log.d("JEVASSIST", "overlay: fill tapped"); onFill(text); if (expanded) toggle() })
         c.addView(btns)
         return c
     }
@@ -495,7 +495,7 @@ class OverlayController(private val ctx: Context) {
     }
 
     private fun reAnalyzeBtn() = TextView(ctx).apply {
-        text = "重新分析"; textSize = 13f; gravity = Gravity.CENTER
+        text = "Analyze again"; textSize = 13f; gravity = Gravity.CENTER
         setTextColor(Color.parseColor("#6B7280"))
         setPadding(dp(10), dp(10), dp(10), dp(4))
         setOnClickListener { onManualAnalyze?.invoke() }
@@ -529,7 +529,7 @@ class OverlayController(private val ctx: Context) {
     private fun copy(text: String) {
         val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
         cm.setPrimaryClip(android.content.ClipData.newPlainText("jev_reply", text))
-        toast("已复制")
+        toast("Copied")
     }
 
     private fun dangerColor(lvl: Int): Int = when {
@@ -539,23 +539,23 @@ class OverlayController(private val ctx: Context) {
     }
 
     private fun dangerWord(lvl: Int): String = when {
-        lvl >= 8 -> "很危险"
-        lvl >= 6 -> "偏危险"
-        lvl >= 3 -> "留神"
-        else -> "安全"
+        lvl >= 8 -> "Very risky"
+        lvl >= 6 -> "Risky"
+        lvl >= 3 -> "Caution"
+        else -> "Safe"
     }
 
     companion object {
         private val INTENT = mapOf(
-            "confirm_you_care" to "确认你在不在乎", "vent_anger" to "在发泄情绪",
-            "request_action" to "要你办事", "seek_explanation" to "要个解释",
-            "casual_chat" to "随便聊聊", "close_topic" to "事情过去了")
+            "confirm_you_care" to "Checking whether you care", "vent_anger" to "Venting anger",
+            "request_action" to "Requesting an action", "seek_explanation" to "Seeking an explanation",
+            "casual_chat" to "Casual chat", "close_topic" to "Topic closed")
         private val NEEDS = mapOf(
-            "apology" to "道歉", "action" to "具体行动", "explanation" to "解释",
-            "care" to "你的在乎", "nothing" to "（不用做什么）")
+            "apology" to "Apologize", "action" to "Concrete action", "explanation" to "Explanation",
+            "care" to "Your care", "nothing" to "(No action needed)")
         private val ACTION = mapOf(
-            "check_history" to "翻聊天记录", "apologize" to "先道歉", "give_commitment" to "给承诺",
-            "explain" to "解释清楚", "acknowledge" to "接住情绪", "say_less" to "少说两句",
-            "make_plan" to "定个安排")
+            "check_history" to "Check chat history", "apologize" to "Apologize first", "give_commitment" to "Make a commitment",
+            "explain" to "Explain clearly", "acknowledge" to "Acknowledge feelings", "say_less" to "Say less",
+            "make_plan" to "Make a plan")
     }
 }

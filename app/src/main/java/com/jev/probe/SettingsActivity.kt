@@ -64,15 +64,15 @@ class SettingsActivity : AppCompatActivity() {
         root.padForSystemBars()   // edge-to-edge: keep the title off the status bar
         scroll.addView(root)
 
-        root.addView(header("设置"))
+        root.addView(header("Settings"))
 
-        // =================== 接口 ===================
-        root.addView(section("接口"))
+        // =================== API ===================
+        root.addView(section("API"))
 
-        // --- 判断接口（Jev） ---
+        // --- Judge API (Jev) ---
         val judgeCard = card()
-        judgeCard.addView(cardTitle("判断接口（Jev）"))
-        judgeCard.addView(text("读对方消息、给意图判断和候选排序。必须配置。", 12f, sub))
+        judgeCard.addView(cardTitle("Judge API (Jev)"))
+        judgeCard.addView(text("Read messages, judge intent and rank reply candidates. Required.", 12f, sub))
 
         val judgeBaseEdit = edit(prefs.judgeBaseUrl, Prefs.DEFAULT_JUDGE_BASE_OPENROUTER)
         val judgeModelEdit = edit(prefs.judgeModel, Prefs.DEFAULT_JUDGE_MODEL_OPENROUTER)
@@ -82,7 +82,7 @@ class SettingsActivity : AppCompatActivity() {
             else -> 0
         }
         judgeCard.addView(pills(
-            listOf("OpenRouter", "TypeSafe 直连", "自定义"), judgeProviderIdx) { idx ->
+            listOf("OpenRouter", "Direct TypeSafe", "Custom"), judgeProviderIdx) { idx ->
             judgeProviderIdx = idx
             when (idx) {
                 0 -> {
@@ -101,29 +101,29 @@ class SettingsActivity : AppCompatActivity() {
         })
         judgeCard.addView(label("Base URL"))
         judgeCard.addView(judgeBaseEdit)
-        judgeCard.addView(text("OpenRouter 拼 /alpha/decisions；TypeSafe 拼 /v1/systemone；自定义按原样 POST。",
+        judgeCard.addView(text("OpenRouter uses /alpha/decisions; TypeSafe uses /v1/systemone; custom URLs are posted as entered.",
             11f, sub))
-        judgeCard.addView(label("密钥"))
+        judgeCard.addView(label("API key"))
         judgeCard.addView(edit(prefs.judgeKey, "sk-...", password = true).also { judgeKeyEdit = it })
-        judgeCard.addView(label("模型"))
+        judgeCard.addView(label("Model"))
         judgeCard.addView(judgeModelEdit)
         val judgeResult = resultText()
-        judgeCard.addView(cardBtn("测试判断") {
+        judgeCard.addView(cardBtn("Test judge") {
             val base = judgeBaseEdit.text.toString().trim()
             val key = judgeKeyEdit.text.toString().trim()
             val model = judgeModelEdit.text.toString().trim()
-            if (key.isBlank()) { judgeResult.text = "请先填密钥"; return@cardBtn }
-            judgeResult.text = "测试中…"
+            if (key.isBlank()) { judgeResult.text = "Enter an API key first"; return@cardBtn }
+            judgeResult.text = "Testing…"
             // Provider follows the address when it is still a known preset host,
             // so a stale pill selection cannot send a TypeSafe path to OpenRouter.
             val provider = resolveJudgeProvider(judgeProviderIdx, base)
             if (provider == Prefs.PROVIDER_CUSTOM && base.isBlank()) {
-                judgeResult.text = "自定义档要填完整 URL（带路径）"; return@cardBtn
+                judgeResult.text = "Custom mode requires a complete URL with its path"; return@cardBtn
             }
             // Custom means we know nothing about the endpoint — guessing a model
             // name here would test something the user never asked for.
             if (provider == Prefs.PROVIDER_CUSTOM && model.isBlank()) {
-                judgeResult.text = "请填写模型名"; return@cardBtn
+                judgeResult.text = "Enter a model name"; return@cardBtn
             }
             val probe = draftPrefs(SCRATCH_JUDGE) {
                 judgeProvider = provider
@@ -133,24 +133,24 @@ class SettingsActivity : AppCompatActivity() {
             }
             worker.execute {
                 val t0 = System.currentTimeMillis()
-                val demo = ChatSnapshot("连通测试", listOf(
-                    Msg("other", "在吗？"), Msg("me", "在")))
+                val demo = ChatSnapshot("Connectivity test", listOf(
+                    Msg("other", "Are you there?"), Msg("me", "Here")))
                 val a = JudgeClient(probe).judge(demo, prefs.relationship)
                 val ms = System.currentTimeMillis() - t0
                 main.post {
-                    judgeResult.text = if (a.error != null) "失败（${ms}ms）：${a.error}"
-                    else "成功 ${ms}ms · 意图=${a.trueIntent?.choice ?: "?"}" +
-                        "（置信 ${pct(a.trueIntent?.confidence)}）"
+                    judgeResult.text = if (a.error != null) "Failed (${ms}ms): ${a.error}"
+                    else "Success ${ms}ms · intent=${a.trueIntent?.choice ?: "?"}" +
+                        " (confidence ${pct(a.trueIntent?.confidence)})"
                 }
             }
         })
         judgeCard.addView(judgeResult)
         root.addView(judgeCard)
 
-        // --- 回复接口 ---
+        // --- Reply API ---
         val replyCard = card()
-        replyCard.addView(cardTitle("回复接口"))
-        replyCard.addView(text("生成 3 条候选回复。任何 OpenAI 兼容地址，填到 /v1 为止。", 12f, sub))
+        replyCard.addView(cardTitle("Reply API"))
+        replyCard.addView(text("Generate 3 reply candidates. Enter any OpenAI-compatible base URL up to /v1.", 12f, sub))
 
         val replyBaseEdit = edit(prefs.replyBaseUrl, Prefs.DEFAULT_REPLY_BASE)
         val replyModelEdit = edit(prefs.replyModel, Prefs.DEFAULT_REPLY_MODEL)
@@ -161,7 +161,7 @@ class SettingsActivity : AppCompatActivity() {
             else -> 3
         }
         replyCard.addView(pills(
-            listOf("OpenRouter", "DeepSeek 官方", "通义兼容", "自定义"), replyIdx) { idx ->
+            listOf("OpenRouter", "Official DeepSeek", "Qwen-compatible", "Custom"), replyIdx) { idx ->
             when (idx) {
                 0 -> { replyBaseEdit.setText(Prefs.DEFAULT_REPLY_BASE); replyModelEdit.setText(Prefs.DEFAULT_REPLY_MODEL) }
                 1 -> { replyBaseEdit.setText(Prefs.DEEPSEEK_BASE); replyModelEdit.setText(Prefs.DEEPSEEK_MODEL) }
@@ -170,12 +170,12 @@ class SettingsActivity : AppCompatActivity() {
         })
         replyCard.addView(label("Base URL"))
         replyCard.addView(replyBaseEdit)
-        replyCard.addView(label("密钥"))
-        replyCard.addView(edit(prefs.replyKey, "留空则用判断接口密钥", password = true).also { replyKeyEdit = it })
-        replyCard.addView(label("模型"))
+        replyCard.addView(label("API key"))
+        replyCard.addView(edit(prefs.replyKey, "Leave blank to reuse the judge API key", password = true).also { replyKeyEdit = it })
+        replyCard.addView(label("Model"))
         replyCard.addView(replyModelEdit)
         val replyResult = resultText()
-        replyCard.addView(cardBtn("测试回复") {
+        replyCard.addView(cardBtn("Test reply") {
             val base = replyBaseEdit.text.toString().trim()
             val model = replyModelEdit.text.toString().trim()
             val probe = draftPrefs(SCRATCH_REPLY) {
@@ -184,8 +184,8 @@ class SettingsActivity : AppCompatActivity() {
                 replyKey = replyKeyEdit.text.toString().trim()
                 replyModel = model.ifBlank { Prefs.DEFAULT_REPLY_MODEL }
             }
-            if (probe.effectiveReplyKey().isBlank()) { replyResult.text = "请先填密钥（或填判断接口密钥）"; return@cardBtn }
-            replyResult.text = "测试中…"
+            if (probe.effectiveReplyKey().isBlank()) { replyResult.text = "Enter an API key (or set the judge API key)"; return@cardBtn }
+            replyResult.text = "Testing…"
             worker.execute {
                 val t0 = System.currentTimeMillis()
                 var err: String? = null
@@ -194,18 +194,18 @@ class SettingsActivity : AppCompatActivity() {
                 } catch (e: Exception) { err = e.message; "" }
                 val ms = System.currentTimeMillis() - t0
                 main.post {
-                    replyResult.text = if (err != null) "失败（${ms}ms）：$err"
-                    else "成功 ${ms}ms · 返回：${out.replace("\n", " ").take(60)}"
+                    replyResult.text = if (err != null) "Failed (${ms}ms): $err"
+                    else "Success ${ms}ms · response: ${out.replace("\n", " ").take(60)}"
                 }
             }
         })
         replyCard.addView(replyResult)
         root.addView(replyCard)
 
-        // --- 视觉接口 ---
+        // --- Vision API ---
         val visionCard = card()
-        visionCard.addView(cardTitle("视觉接口（OCR 用，可先不填）"))
-        visionCard.addView(text("读不到控件树的 App 走截图识别。B 阶段才用到，现在填不填都不影响。", 12f, sub))
+        visionCard.addView(cardTitle("Vision API (for OCR, optional)"))
+        visionCard.addView(text("Apps whose text tree cannot be read use screenshot OCR. This is optional for now.", 12f, sub))
 
         val visionBaseEdit = edit(prefs.visionBaseUrl, Prefs.DEFAULT_VISION_BASE)
         val visionModelEdit = edit(prefs.visionModel, Prefs.DEFAULT_VISION_MODEL)
@@ -215,7 +215,7 @@ class SettingsActivity : AppCompatActivity() {
             else -> 2
         }
         visionCard.addView(pills(
-            listOf("OpenRouter", "通义兼容", "自定义"), visionIdx) { idx ->
+            listOf("OpenRouter", "Qwen-compatible", "Custom"), visionIdx) { idx ->
             when (idx) {
                 0 -> { visionBaseEdit.setText(Prefs.DEFAULT_VISION_BASE); visionModelEdit.setText(Prefs.DEFAULT_VISION_MODEL) }
                 1 -> { visionBaseEdit.setText(Prefs.DASHSCOPE_BASE); visionModelEdit.setText(Prefs.DASHSCOPE_VISION_MODEL) }
@@ -223,12 +223,12 @@ class SettingsActivity : AppCompatActivity() {
         })
         visionCard.addView(label("Base URL"))
         visionCard.addView(visionBaseEdit)
-        visionCard.addView(label("密钥"))
-        visionCard.addView(edit(prefs.visionKey, "留空则用回复接口密钥", password = true).also { visionKeyEdit = it })
-        visionCard.addView(label("模型"))
+        visionCard.addView(label("API key"))
+        visionCard.addView(edit(prefs.visionKey, "Leave blank to reuse the reply API key", password = true).also { visionKeyEdit = it })
+        visionCard.addView(label("Model"))
         visionCard.addView(visionModelEdit)
         val visionResult = resultText()
-        visionCard.addView(cardBtn("测试视觉") {
+        visionCard.addView(cardBtn("Test vision") {
             val visionBase = visionBaseEdit.text.toString().trim()
             if (!VisionClient.supportsVision(visionBase.ifBlank { Prefs.DEFAULT_VISION_BASE })) {
                 visionResult.text = GUARD_NO_VISION
@@ -242,80 +242,80 @@ class SettingsActivity : AppCompatActivity() {
                 visionKey = visionKeyEdit.text.toString().trim()
                 visionModel = visionModelEdit.text.toString().trim().ifBlank { Prefs.DEFAULT_VISION_MODEL }
             }
-            if (probe.effectiveVisionKey().isBlank()) { visionResult.text = "请先填密钥（或填回复/判断接口密钥）"; return@cardBtn }
-            visionResult.text = "测试中…"
+            if (probe.effectiveVisionKey().isBlank()) { visionResult.text = "Enter an API key (or set the reply/judge API key)"; return@cardBtn }
+            visionResult.text = "Testing…"
             worker.execute {
                 val t0 = System.currentTimeMillis()
                 var err: String? = null
                 val out = try {
-                    VisionClient(probe).ask(whitePixelJpegB64(), "这张图是什么颜色？只回答颜色。")
+                    VisionClient(probe).ask(whitePixelJpegB64(), "What color is this image? Reply with only the color.")
                 } catch (e: Exception) { err = e.message; "" }
                 val ms = System.currentTimeMillis() - t0
                 main.post {
-                    visionResult.text = if (err != null) "失败（${ms}ms）：$err"
-                    else "成功 ${ms}ms · 返回：${out.replace("\n", " ").take(60)}"
+                    visionResult.text = if (err != null) "Failed (${ms}ms): $err"
+                    else "Success ${ms}ms · response: ${out.replace("\n", " ").take(60)}"
                 }
             }
         })
         visionCard.addView(visionResult)
         root.addView(visionCard)
 
-        // =================== 分析 ===================
-        root.addView(section("分析"))
+        // =================== Analysis ===================
+        root.addView(section("Analysis"))
         val card2 = card()
-        card2.addView(label("关系描述（给 Jev 判断用）"))
+        card2.addView(label("Relationship description (used by Jev)"))
         val relEdit = edit(prefs.relationship, Prefs.DEFAULT_REL)
         card2.addView(relEdit)
-        card2.addView(label("会话白名单（每行一个关键词，空=所有会话）"))
-        val wlEdit = edit(prefs.whitelist.joinToString("\n"), "留空则对所有会话生效").apply {
+        card2.addView(label("Chat whitelist (one keyword per line; blank = all chats)"))
+        val wlEdit = edit(prefs.whitelist.joinToString("\n"), "Leave blank to apply to all chats").apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE; minLines = 2
         }
         card2.addView(wlEdit)
-        val autoRow = toggleRow("对方发消息时自动分析", prefs.autoAnalyze)
+        val autoRow = toggleRow("Analyze automatically when the other person sends a message", prefs.autoAnalyze)
         card2.addView(autoRow)
 
-        // --- OCR 兜底（B 阶段）---
-        val ocrFallbackRow = toggleRow("树读不到正文时用 OCR 兜底", prefs.ocrFallback)
+        // --- OCR fallback---
+        val ocrFallbackRow = toggleRow("Use OCR when the accessibility tree has no message text", prefs.ocrFallback)
         card2.addView(ocrFallbackRow)
-        card2.addView(text("飞书正文是画上去的、微信伪装失效时也读不到，这时截一次屏本地识别（不上传）。", 11f, sub))
-        val ocrAutoRow = toggleRow("OCR 模式自动分析", prefs.ocrAutoAnalyze)
+        card2.addView(text("Lark draws message text and WeChat may hide it; screenshot OCR runs locally and does not upload the image.", 11f, sub))
+        val ocrAutoRow = toggleRow("Analyze automatically in OCR mode", prefs.ocrAutoAnalyze)
         card2.addView(ocrAutoRow)
-        card2.addView(text("关闭时 OCR 认完只亮悬浮球，点一下再分析。", 11f, sub))
+        card2.addView(text("When off, OCR only shows the bubble; tap it to analyze.", 11f, sub))
 
-        // --- 知识库 / 关联上下文（D 阶段） ---
-        val ctxRow = toggleRow("记录聊天历史（只存本机，用于关联上下文）", prefs.contextEnabled)
+        // --- Knowledge base / context ---
+        val ctxRow = toggleRow("Record chat history (stored locally for context)", prefs.contextEnabled)
         card2.addView(ctxRow)
-        card2.addView(text("关闭时不写任何聊天内容到磁盘；笔记与联系人匹配仍然照常工作。", 11f, sub))
-        card2.addView(label("注入最近历史条数（0–100）"))
+        card2.addView(text("When off, chat text is not written to disk; notes and contacts still work.", 11f, sub))
+        card2.addView(label("Recent history entries to inject (0–100)"))
         val ctxCountEdit = edit(prefs.contextHistoryCount.toString(), "30").apply {
             inputType = InputType.TYPE_CLASS_NUMBER
         }
         card2.addView(ctxCountEdit)
-        card2.addView(cardBtn("知识库与联系人") {
+        card2.addView(cardBtn("Knowledge base and contacts") {
             startActivity(android.content.Intent(this, KnowledgeActivity::class.java))
         })
         val kbResult = resultText()
-        card2.addView(cardBtn("清空知识库与历史") {
+        card2.addView(cardBtn("Clear knowledge base and history") {
             val c = KbStore.get(this).counts()
             androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("清空知识库与历史")
-                .setMessage("将删除 ${c.notes} 条笔记、${c.contacts} 个联系人、${c.logLines} 条聊天历史。" +
-                    "密钥、白名单等设置不受影响。不可恢复。")
-                .setPositiveButton("清空") { _, _ ->
+                .setTitle("Clear knowledge base and history")
+                .setMessage("This will delete ${c.notes} notes, ${c.contacts} contacts and ${c.logLines} chat history entries." +
+                    "API keys, whitelist and other settings are not affected. This cannot be undone.")
+                .setPositiveButton("Clear") { _, _ ->
                     KbStore.get(this).clearAll()
-                    kbResult.text = "已清空知识库与历史"
+                    kbResult.text = "Knowledge base and history cleared"
                 }
-                .setNegativeButton("取消", null)
+                .setNegativeButton("Cancel", null)
                 .show()
         })
         // Deliberately low-key: a developer aid, not a user feature.
-        card2.addView(text("自检", 12f, sub).apply {
+        card2.addView(text("Self-check", 12f, sub).apply {
             setPadding(dp(2), dp(12), dp(8), dp(2))
             setOnClickListener {
-                kbResult.text = "自检中…"
+                kbResult.text = "Running self-check…"
                 worker.execute {
                     val out = try { KbSelfCheck.run(this@SettingsActivity) }
-                    catch (e: Exception) { "自检异常：${e.javaClass.simpleName} ${e.message ?: ""}" }
+                    catch (e: Exception) { "Self-check error: ${e.javaClass.simpleName} ${e.message ?: ""}" }
                     main.post { kbResult.text = out }
                 }
             }
@@ -323,17 +323,17 @@ class SettingsActivity : AppCompatActivity() {
         card2.addView(kbResult)
         root.addView(card2)
 
-        // =================== 外观 ===================
-        root.addView(section("外观"))
+        // =================== Appearance ===================
+        root.addView(section("Appearance"))
         val card3 = card()
-        val opacityLabel = label("悬浮窗不透明度：${prefs.overlayOpacity}%")
+        val opacityLabel = label("Overlay opacity: ${prefs.overlayOpacity}%")
         card3.addView(opacityLabel)
-        card3.addView(text("越低越透，越能看清下面的聊天", 12f, sub))
+        card3.addView(text("Lower values make the chat underneath easier to see", 12f, sub))
         val seek = SeekBar(this).apply {
             max = 40; progress = prefs.overlayOpacity - 60  // 60..100
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(sb: SeekBar?, p: Int, u: Boolean) {
-                    opacityLabel.text = "悬浮窗不透明度：${p + 60}%"
+                    opacityLabel.text = "Overlay opacity: ${p + 60}%"
                 }
                 override fun onStartTrackingTouch(sb: SeekBar?) {}
                 override fun onStopTrackingTouch(sb: SeekBar?) {}
@@ -342,8 +342,8 @@ class SettingsActivity : AppCompatActivity() {
         card3.addView(seek)
         root.addView(card3)
 
-        // =================== 保存 ===================
-        root.addView(primaryBtn("保存全部设置") {
+        // =================== Save ===================
+        root.addView(primaryBtn("Save all settings") {
             // Address wins over the pill: a preset HOST in the box means that
             // preset's provider (and so its path), whatever the pill last said.
             val judgeBaseTyped = judgeBaseEdit.text.toString().trim()
@@ -383,7 +383,7 @@ class SettingsActivity : AppCompatActivity() {
             prefs.contextHistoryCount =
                 ctxCountEdit.text.toString().trim().toIntOrNull()?.coerceIn(0, 100) ?: 30
             prefs.overlayOpacity = seek.progress + 60
-            Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show()
         })
 
         setContentView(scroll)
@@ -497,7 +497,7 @@ class SettingsActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         val sw = TextView(this).apply {
-            text = if (initial) "开" else "关"; textSize = 13f; gravity = Gravity.CENTER
+            text = if (initial) "On" else "Off"; textSize = 13f; gravity = Gravity.CENTER
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(if (initial) Color.WHITE else sub)
             background = round(dp(10), if (initial) accent else Color.parseColor("#E5E7EB"))
@@ -505,7 +505,7 @@ class SettingsActivity : AppCompatActivity() {
         }
         sw.setOnClickListener {
             val now = !((row.tag as? Boolean) ?: true); row.tag = now
-            sw.text = if (now) "开" else "关"
+            sw.text = if (now) "On" else "Off"
             sw.setTextColor(if (now) Color.WHITE else sub)
             sw.background = round(dp(10), if (now) accent else Color.parseColor("#E5E7EB"))
         }
@@ -574,7 +574,7 @@ class SettingsActivity : AppCompatActivity() {
 
         /** DeepSeek's official API has no vision model; say so instead of a 400. */
         private const val GUARD_NO_VISION =
-            "该接口不支持视觉（DeepSeek 官方没有 image_url），请换 OpenRouter 或通义兼容"
+            "This endpoint does not support vision. Use OpenRouter or Qwen-compatible instead"
 
         /** One scratch prefs file per test button; never the real config. */
         private const val SCRATCH_JUDGE = "jev_probe_scratch_judge"

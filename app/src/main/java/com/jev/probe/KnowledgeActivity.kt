@@ -66,8 +66,8 @@ class KnowledgeActivity : AppCompatActivity() {
 
     private fun render() {
         container.removeAllViews()
-        container.addView(text("知识库与联系人", 24f, ink, bold = true))
-        container.addView(text("只存在本机，不上传。分析时按会话标题匹配联系人、按关键词命中笔记。",
+        container.addView(text("Knowledge Base & Contacts", 24f, ink, bold = true))
+        container.addView(text("Stored locally and never uploaded. Contacts match chat titles; notes match keywords.",
             12f, sub).apply { setPadding(0, dp(6), 0, dp(4)) })
         container.addView(tabs())
         if (tab == 0) renderNotes() else renderContacts()
@@ -80,7 +80,7 @@ class KnowledgeActivity : AppCompatActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) }
         }
-        listOf("笔记", "联系人").forEachIndexed { i, name ->
+        listOf("Notes", "Contacts").forEachIndexed { i, name ->
             val pill = TextView(this).apply {
                 text = name; textSize = 13f; gravity = Gravity.CENTER
                 setPadding(dp(18), dp(8), dp(18), dp(8))
@@ -101,14 +101,14 @@ class KnowledgeActivity : AppCompatActivity() {
 
     private fun renderNotes() {
         val notes = store.notes().sortedByDescending { it.updatedAt }
-        container.addView(twoButtons("新建笔记", { editNoteDialog(null) },
-            "从文本导入", { importNotesDialog() }))
+        container.addView(twoButtons("New note", { editNoteDialog(null) },
+            "Import text", { importNotesDialog() }))
         if (notes.isEmpty()) {
-            container.addView(emptyCard("还没有笔记。写点该记住的事实：习惯、忌口、项目代号、约定过的时间。"))
+            container.addView(emptyCard("No notes yet. Add facts to remember: habits, preferences, project codes and agreed times."))
             return
         }
         notes.forEach { container.addView(noteRow(it)) }
-        container.addView(text("点条目编辑，长按删除。命中规则：任一标签或标题出现在会话标题或最近 6 条消息里。",
+        container.addView(text("Tap an item to edit; long-press to delete. A note matches when its title or tag appears in the chat title or recent messages.",
             11f, sub).apply { setPadding(dp(2), dp(12), 0, 0) })
     }
 
@@ -121,10 +121,10 @@ class KnowledgeActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        val head = n.title.ifBlank { "（无标题）" } + if (n.alwaysOn) "  · 常驻" else ""
+        val head = n.title.ifBlank { "(Untitled)" } + if (n.alwaysOn) "  · Always included" else ""
         left.addView(text(head, 15f, ink, bold = true))
         left.addView(text(
-            if (n.tags.isEmpty()) "无标签" else "标签：" + n.tags.joinToString("、"),
+            if (n.tags.isEmpty()) "No tags" else "Tags: " + n.tags.joinToString("、"),
             12f, sub).apply { setPadding(0, dp(3), 0, 0) })
         left.addView(text(n.content.replace("\n", " ").take(46), 12f, sub)
             .apply { setPadding(0, dp(3), 0, 0) })
@@ -135,7 +135,7 @@ class KnowledgeActivity : AppCompatActivity() {
         c.addView(row)
         c.setOnClickListener { editNoteDialog(n) }
         c.setOnLongClickListener {
-            confirm("删除笔记", "删除「${n.title}」？不可恢复。") {
+            confirm("Delete note", "Delete ${n.title}? This cannot be undone.") {
                 store.deleteNote(n.id); render()
             }
             true
@@ -145,27 +145,27 @@ class KnowledgeActivity : AppCompatActivity() {
 
     private fun editNoteDialog(existing: Note?) {
         val box = dialogBox()
-        val titleEdit = edit(existing?.title ?: "", "标题，例如：口味忌口")
-        val contentEdit = edit(existing?.content ?: "", "正文，写清楚事实本身").apply {
+        val titleEdit = edit(existing?.title ?: "", "Title, e.g. Food preferences")
+        val contentEdit = edit(existing?.content ?: "", "Content, describe the facts").apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
             minLines = 4; gravity = Gravity.TOP
         }
-        val tagsEdit = edit(existing?.tags?.joinToString("，") ?: "", "逗号分隔，例如：吃饭，周末")
-        val alwaysRow = toggleRow("常驻（每次分析都带上）", existing?.alwaysOn ?: false)
-        val enabledRow = toggleRow("启用", existing?.enabled ?: true)
-        box.addView(label("标题")); box.addView(titleEdit)
-        box.addView(label("正文")); box.addView(contentEdit)
-        box.addView(label("标签")); box.addView(tagsEdit)
+        val tagsEdit = edit(existing?.tags?.joinToString("，") ?: "", "Comma-separated, e.g. meals, weekends")
+        val alwaysRow = toggleRow("Always include in analysis", existing?.alwaysOn ?: false)
+        val enabledRow = toggleRow("Enabled", existing?.enabled ?: true)
+        box.addView(label("Title")); box.addView(titleEdit)
+        box.addView(label("Content")); box.addView(contentEdit)
+        box.addView(label("Tags")); box.addView(tagsEdit)
         box.addView(alwaysRow); box.addView(enabledRow)
 
         AlertDialog.Builder(this)
-            .setTitle(if (existing == null) "新建笔记" else "编辑笔记")
+            .setTitle(if (existing == null) "New note" else "Edit note")
             .setView(wrapScroll(box))
-            .setPositiveButton("保存") { _, _ ->
+            .setPositiveButton("Save") { _, _ ->
                 val title = titleEdit.text.toString().trim()
                 val content = contentEdit.text.toString().trim()
                 if (title.isBlank() && content.isBlank()) {
-                    toast("标题和正文不能都空着"); return@setPositiveButton
+                    toast("Title and content cannot both be empty"); return@setPositiveButton
                 }
                 store.saveNote(Note(
                     id = existing?.id ?: KbStore.newId(),
@@ -177,22 +177,22 @@ class KnowledgeActivity : AppCompatActivity() {
                 ))
                 render()
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
     private fun importNotesDialog() {
         val box = dialogBox()
-        box.addView(text("按空行分段，每段第一行当标题，其余当正文。", 12f, sub))
-        val input = edit("", "口味忌口\n不吃香菜，海鲜过敏\n\n项目代号\n内部叫小蓝").apply {
+        box.addView(text("Separate entries with blank lines. The first line becomes the title and the rest becomes the content.", 12f, sub))
+        val input = edit("", "Food preferences\nNo cilantro; allergic to seafood\n\nProject code\nInternally called Blue").apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
             minLines = 8; gravity = Gravity.TOP
         }
         box.addView(input)
         AlertDialog.Builder(this)
-            .setTitle("从文本导入")
+            .setTitle("Import text")
             .setView(wrapScroll(box))
-            .setPositiveButton("导入") { _, _ ->
+            .setPositiveButton("Import") { _, _ ->
                 val chunks = input.text.toString().split(Regex("\\r?\\n[ \\t]*\\r?\\n"))
                 var n = 0
                 chunks.forEach { chunk ->
@@ -206,10 +206,10 @@ class KnowledgeActivity : AppCompatActivity() {
                         n++
                     }
                 }
-                toast(if (n == 0) "没解析出内容" else "已导入 $n 条")
+                toast(if (n == 0) "No content found" else "Imported $n entries")
                 render()
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
@@ -220,41 +220,41 @@ class KnowledgeActivity : AppCompatActivity() {
 
     private fun renderContacts() {
         val contacts = store.contacts().sortedByDescending { it.updatedAt }
-        container.addView(twoButtons("新建联系人", { editContactDialog(null) }, null, null))
+        container.addView(twoButtons("New contact", { editContactDialog(null) }, null, null))
         if (contacts.isEmpty()) {
             container.addView(emptyCard(
-                "还没有联系人。也可以在聊天里长按悬浮球，选「把当前会话存为联系人」。"))
+                "No contacts yet. You can also long-press the chat bubble and choose Save current chat as contact."))
             return
         }
         contacts.forEach { container.addView(contactRow(it)) }
-        container.addView(text("点条目编辑，长按删除。会话标题等于名字或任一别名即算命中（忽略大小写与群人数后缀）。",
+        container.addView(text("Tap an item to edit; long-press to delete. A contact matches its name or any alias, ignoring case and group count suffixes.",
             11f, sub).apply { setPadding(dp(2), dp(12), 0, 0) })
     }
 
     private fun contactRow(c0: Contact): View {
         val c = card()
-        c.addView(text(c0.name.ifBlank { "（无名）" }, 15f, ink, bold = true))
+        c.addView(text(c0.name.ifBlank { "(Unnamed)" }, 15f, ink, bold = true))
         if (c0.aliases.isNotEmpty())
-            c.addView(text("别名：" + c0.aliases.joinToString("、"), 12f, sub)
+            c.addView(text("Aliases: " + c0.aliases.joinToString("、"), 12f, sub)
                 .apply { setPadding(0, dp(3), 0, 0) })
         if (c0.apps.isNotEmpty())
-            c.addView(text("来源：" + c0.apps.joinToString("、") { appLabel(it) }, 12f, sub)
+            c.addView(text("Apps: " + c0.apps.joinToString("、") { appLabel(it) }, 12f, sub)
                 .apply { setPadding(0, dp(3), 0, 0) })
         if (c0.relationship.isNotBlank())
-            c.addView(text("关系：" + c0.relationship.replace("\n", " ").take(40), 12f, sub)
+            c.addView(text("Relationship: " + c0.relationship.replace("\n", " ").take(40), 12f, sub)
                 .apply { setPadding(0, dp(3), 0, 0) })
         if (c0.notes.isNotBlank())
-            c.addView(text("备注：" + c0.notes.replace("\n", " ").take(40), 12f, sub)
+            c.addView(text("Notes: " + c0.notes.replace("\n", " ").take(40), 12f, sub)
                 .apply { setPadding(0, dp(3), 0, 0) })
 
         val logN = store.logSize(c0.id)
         val clear = TextView(this).apply {
-            text = "清空此人历史（$logN 条）"
+            text = "Clear contact history ($logN entries)"
             textSize = 12.5f; setTextColor(red); setTypeface(typeface, Typeface.BOLD)
             setPadding(0, dp(10), 0, dp(2))
             setOnClickListener {
-                if (logN == 0) { toast("本来就没有历史"); return@setOnClickListener }
-                confirm("清空历史", "删掉「${c0.name}」的 $logN 条聊天历史？联系人档案保留。") {
+                if (logN == 0) { toast("No history to clear"); return@setOnClickListener }
+                confirm("Clear history", "Delete $logN chat history entries for ${c0.name}? The contact profile remains.") {
                     store.clearLog(c0.id); render()
                 }
             }
@@ -262,7 +262,7 @@ class KnowledgeActivity : AppCompatActivity() {
         c.addView(clear)
         c.setOnClickListener { editContactDialog(c0) }
         c.setOnLongClickListener {
-            confirm("删除联系人", "删除「${c0.name}」及其全部历史？不可恢复。") {
+            confirm("Delete contact", "Delete ${c0.name} and all history? This cannot be undone.") {
                 store.deleteContact(c0.id); render()
             }
             true
@@ -272,27 +272,27 @@ class KnowledgeActivity : AppCompatActivity() {
 
     private fun editContactDialog(existing: Contact?) {
         val box = dialogBox()
-        val nameEdit = edit(existing?.name ?: "", "名字，一般就是会话标题")
-        val aliasEdit = edit(existing?.aliases?.joinToString("\n") ?: "", "每行一个，例如另一个 App 里的昵称").apply {
+        val nameEdit = edit(existing?.name ?: "", "Name, usually the chat title")
+        val aliasEdit = edit(existing?.aliases?.joinToString("\n") ?: "", "One per line, e.g. a nickname in another app").apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
             minLines = 3; gravity = Gravity.TOP
         }
-        val relEdit = edit(existing?.relationship ?: "", "例如：同事，带我做项目的组长")
-        val notesEdit = edit(existing?.notes ?: "", "关于这个人要记住的事").apply {
+        val relEdit = edit(existing?.relationship ?: "", "E.g. colleague, project lead")
+        val notesEdit = edit(existing?.notes ?: "", "Facts to remember about this person").apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
             minLines = 3; gravity = Gravity.TOP
         }
-        box.addView(label("名字")); box.addView(nameEdit)
-        box.addView(label("别名（每行一个）")); box.addView(aliasEdit)
-        box.addView(label("关系")); box.addView(relEdit)
-        box.addView(label("备注")); box.addView(notesEdit)
+        box.addView(label("Name")); box.addView(nameEdit)
+        box.addView(label("Aliases (one per line)")); box.addView(aliasEdit)
+        box.addView(label("Relationship")); box.addView(relEdit)
+        box.addView(label("Notes")); box.addView(notesEdit)
 
         AlertDialog.Builder(this)
-            .setTitle(if (existing == null) "新建联系人" else "编辑联系人")
+            .setTitle(if (existing == null) "New contact" else "Edit contact")
             .setView(wrapScroll(box))
-            .setPositiveButton("保存") { _, _ ->
+            .setPositiveButton("Save") { _, _ ->
                 val name = nameEdit.text.toString().trim()
-                if (name.isBlank()) { toast("名字不能空"); return@setPositiveButton }
+                if (name.isBlank()) { toast("Name cannot be empty"); return@setPositiveButton }
                 store.saveContact(Contact(
                     id = existing?.id ?: KbStore.newId(),
                     name = name,
@@ -305,14 +305,14 @@ class KnowledgeActivity : AppCompatActivity() {
                 ))
                 render()
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
     private fun appLabel(pkg: String): String = when (pkg) {
-        "com.tencent.mm" -> "微信"
+        "com.tencent.mm" -> "WeChat"
         "com.tencent.mobileqq" -> "QQ"
-        "com.ss.android.lark" -> "飞书"
+        "com.ss.android.lark" -> "Lark"
         "com.twitter.android" -> "X"
         else -> pkg
     }
@@ -322,8 +322,8 @@ class KnowledgeActivity : AppCompatActivity() {
     private fun confirm(title: String, msg: String, onYes: () -> Unit) {
         AlertDialog.Builder(this)
             .setTitle(title).setMessage(msg)
-            .setPositiveButton("确定") { _, _ -> onYes() }
-            .setNegativeButton("取消", null)
+            .setPositiveButton("OK") { _, _ -> onYes() }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
@@ -363,7 +363,7 @@ class KnowledgeActivity : AppCompatActivity() {
     }
 
     private fun smallToggle(on: Boolean, onClick: () -> Unit) = TextView(this).apply {
-        text = if (on) "开" else "关"; textSize = 13f; gravity = Gravity.CENTER
+        text = if (on) "On" else "Off"; textSize = 13f; gravity = Gravity.CENTER
         setTypeface(typeface, Typeface.BOLD)
         setTextColor(if (on) Color.WHITE else sub)
         background = round(dp(10), if (on) accent else Color.parseColor("#E5E7EB"))
@@ -380,7 +380,7 @@ class KnowledgeActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         val sw = TextView(this).apply {
-            text = if (initial) "开" else "关"; textSize = 13f; gravity = Gravity.CENTER
+            text = if (initial) "On" else "Off"; textSize = 13f; gravity = Gravity.CENTER
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(if (initial) Color.WHITE else sub)
             background = round(dp(10), if (initial) accent else Color.parseColor("#E5E7EB"))
@@ -388,7 +388,7 @@ class KnowledgeActivity : AppCompatActivity() {
         }
         sw.setOnClickListener {
             val now = !((row.tag as? Boolean) ?: true); row.tag = now
-            sw.text = if (now) "开" else "关"
+            sw.text = if (now) "On" else "Off"
             sw.setTextColor(if (now) Color.WHITE else sub)
             sw.background = round(dp(10), if (now) accent else Color.parseColor("#E5E7EB"))
         }

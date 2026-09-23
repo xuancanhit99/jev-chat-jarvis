@@ -12,9 +12,9 @@ import java.net.URL
  * the user can act on ("判断接口 HTTP 401：…" vs "回复接口 …").
  */
 object Route {
-    const val JUDGE = "判断接口"
-    const val REPLY = "回复接口"
-    const val VISION = "视觉接口"
+    const val JUDGE = "Judge API"
+    const val REPLY = "Reply API"
+    const val VISION = "Vision API"
 }
 
 /**
@@ -30,7 +30,7 @@ class ApiException(
     companion object {
         fun buildMessage(route: String, status: Int?, snippet: String): String =
             if (status != null) "$route HTTP $status：${snippet.take(120)}"
-            else "$route 请求失败：${snippet.take(120)}"
+            else "$route request failed: ${snippet.take(120)}"
     }
 }
 
@@ -72,7 +72,7 @@ object HttpJson {
                 conn.outputStream.use { os: OutputStream -> os.write(bytes) }
                 val code = conn.responseCode
                 if (code == 429 || code == 529) {
-                    last = ApiException(route, code, "服务繁忙，已重试")
+                    last = ApiException(route, code, "Service busy after retrying")
                     attempt++
                     if (attempt < MAX_ATTEMPTS) Thread.sleep(500L * (1L shl attempt))
                     continue
@@ -84,10 +84,10 @@ object HttpJson {
                 // status, which then got retried even for a 401.
                 if (code !in 200..299) {
                     val errText = readBody(conn.errorStream)
-                    throw ApiException(route, code, errText.ifBlank { "（响应体为空）" })
+                    throw ApiException(route, code, errText.ifBlank { "(empty response body)" })
                 }
                 val text = readBody(conn.inputStream)
-                if (text.isBlank()) throw ApiException(route, code, "响应体为空")
+                if (text.isBlank()) throw ApiException(route, code, "Empty response body")
                 return JSONObject(text)
             } catch (e: ApiException) {
                 if (e.status != null && e.status in 400..499) throw e  // client error: no retry
@@ -102,7 +102,7 @@ object HttpJson {
                 conn?.disconnect()
             }
         }
-        throw last ?: ApiException(route, null, "请求失败")
+        throw last ?: ApiException(route, null, "Request failed")
     }
 
     /** Body text, or "" — a null stream or a read failure never costs us the status code. */
@@ -123,10 +123,10 @@ object HttpJson {
     private fun describe(e: Exception): String {
         val m = e.message ?: e.javaClass.simpleName
         return when {
-            m.contains("timed out") || m.contains("timeout", true) -> "网络超时，请检查连接"
-            m.contains("Unable to resolve host") -> "域名解析失败，地址填错或无网络"
-            m.contains("Failed to connect") || m.contains("ECONNREFUSED") -> "无法连接该地址"
-            m.contains("CertPath") || m.contains("SSL") -> "HTTPS 证书校验失败"
+            m.contains("timed out") || m.contains("timeout", true) -> "Network timeout; check your connection"
+            m.contains("Unable to resolve host") -> "DNS lookup failed; check the URL or network"
+            m.contains("Failed to connect") || m.contains("ECONNREFUSED") -> "Could not connect to the URL"
+            m.contains("CertPath") || m.contains("SSL") -> "HTTPS certificate validation failed"
             else -> m
         }
     }

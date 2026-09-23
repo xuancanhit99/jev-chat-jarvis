@@ -95,12 +95,12 @@ open class ChatCaptureService : AccessibilityService() {
             val title = currentSnapshot?.title
             val pkg = activePkg ?: foregroundPkg ?: ""
             when {
-                title.isNullOrBlank() -> overlay?.toast("当前会话没有标题，存不了")
-                isTransientTitle(title) -> overlay?.toast("当前会话标题还没加载出来，稍后再试")
+                title.isNullOrBlank() -> overlay?.toast("This chat has no title, so it cannot be saved")
+                isTransientTitle(title) -> overlay?.toast("The chat title is still loading; try again shortly")
                 else -> submit {
                     val msg = try {
                         KbStore.get(this).saveOrMergeContact(title, pkg)
-                    } catch (e: Exception) { "保存失败：${e.javaClass.simpleName}" }
+                    } catch (e: Exception) { "Save failed: ${e.javaClass.simpleName}" }
                     main.post { overlay?.toast(msg) }
                 }
             }
@@ -243,7 +243,7 @@ open class ChatCaptureService : AccessibilityService() {
     private fun runAnalysis() {
         val snapshot = pendingSnapshot ?: return
         if (analyzing) return
-        if (!prefs.hasKey()) { main.post { overlay?.showError("未设置判断接口密钥，去设置里填") }; return }
+        if (!prefs.hasKey()) { main.post { overlay?.showError("Judge API key is not configured. Open Settings to add it") }; return }
         analyzing = true
         main.post { overlay?.showLoading(); overlay?.setNote(snapshot.note) }
         val client = JevClient(prefs)
@@ -442,7 +442,7 @@ open class ChatCaptureService : AccessibilityService() {
         // Counts only — OCR'd chat text never goes to logcat.
         Log.i(TAG, "ocr[$pkg] msgs=${snapshot.messages.size} manual=$manual")
         if (snapshot.messages.isEmpty()) {
-            if (manual) overlay?.showError("这一屏没认出文字")
+            if (manual) overlay?.showError("No text was detected on this screen")
             return
         }
         if (!prefs.isAllowed(snapshot.title)) { overlay?.hide(); return }
@@ -501,8 +501,8 @@ open class ChatCaptureService : AccessibilityService() {
                 }
             }
             main.post {
-                if (ok) overlay?.toast("已填入，确认后自己发送")
-                else { copyToClipboard(text); overlay?.toast("已复制，长按输入框粘贴") }
+                if (ok) overlay?.toast("Filled in. Review it and send manually")
+                else { copyToClipboard(text); overlay?.toast("Copied. Long-press the input field to paste") }
             }
         }
     }
@@ -575,7 +575,7 @@ open class ChatCaptureService : AccessibilityService() {
         private const val BOTTOM_CROP = 0.84f
 
         /** Said on the panel whenever a snapshot came from flat-screen OCR. */
-        private const val OCR_NOTE = "OCR 未分边，把全部消息当作对方所说"
+        private const val OCR_NOTE = "OCR could not identify sides; all messages are treated as from the other person"
 
         private val PURE_TIME = Regex("""\d{1,2}[:：]\d{2}""")
         private val TAIL_TIME = Regex("""\d{1,2}[:：]\d{2}$""")
