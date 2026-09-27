@@ -77,12 +77,45 @@ class SettingsActivity : AppCompatActivity() {
         val judgeBaseEdit = edit(prefs.judgeBaseUrl, Prefs.DEFAULT_JUDGE_BASE_OPENROUTER)
         val judgeModelEdit = edit(prefs.judgeModel, Prefs.DEFAULT_JUDGE_MODEL_OPENROUTER)
         judgeProviderIdx = when (prefs.judgeProvider) {
-            Prefs.PROVIDER_TYPESAFE -> 1
-            Prefs.PROVIDER_CUSTOM -> 2
+            Prefs.PROVIDER_OPENROUTER -> 0
+            Prefs.PROVIDER_BOCHA -> 1
+            Prefs.PROVIDER_TYPESAFE -> 2
+            Prefs.PROVIDER_VERCEL -> 3
+            Prefs.PROVIDER_ZEN -> 4
+            Prefs.PROVIDER_CUSTOM -> 5
             else -> 0
         }
+        // Bocha promo block — official address + one-tap copy (limited-time free).
+        // Shown ONLY when Bocha Jev is the selected provider; picking any other
+        // provider hides it. It used to be added unconditionally, which made every
+        // tab look like it was still showing Bocha.
+        val bochaBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val bochaRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(10), 0, dp(2))
+        }
+        bochaRow.addView(text("${Prefs.DEFAULT_JUDGE_BASE_BOCHA} (limited free offer)", 12.5f, ink).apply {
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        bochaRow.addView(TextView(this).apply {
+            text = "Copy"; textSize = 13f; gravity = Gravity.CENTER
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(accent); background = round(dp(10), Color.WHITE, stroke = true)
+            setPadding(dp(16), dp(6), dp(16), dp(6))
+            setOnClickListener {
+                val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                cm.setPrimaryClip(android.content.ClipData.newPlainText(
+                    "jev_bocha", Prefs.DEFAULT_JUDGE_BASE_BOCHA))
+                Toast.makeText(this@SettingsActivity, "Copied", Toast.LENGTH_SHORT).show()
+            }
+        })
+        bochaBox.addView(bochaRow)
+        bochaBox.addView(text("Get a limited-time free API key at jev.bocha.cn", 11f, sub))
+        bochaBox.visibility = if (judgeProviderIdx == 1) View.VISIBLE else View.GONE
+
         judgeCard.addView(pills(
-            listOf("OpenRouter", "Direct TypeSafe", "Custom"), judgeProviderIdx) { idx ->
+            listOf("OpenRouter", "Bocha Jev", "Direct TypeSafe", "Vercel", "OpenCode Zen", "Custom"), judgeProviderIdx) { idx ->
             judgeProviderIdx = idx
             when (idx) {
                 0 -> {
@@ -90,19 +123,33 @@ class SettingsActivity : AppCompatActivity() {
                     judgeModelEdit.setText(Prefs.DEFAULT_JUDGE_MODEL_OPENROUTER)
                 }
                 1 -> {
+                    judgeBaseEdit.setText(Prefs.DEFAULT_JUDGE_BASE_BOCHA)
+                    judgeModelEdit.setText(Prefs.DEFAULT_JUDGE_MODEL_BOCHA)
+                }
+                2 -> {
                     judgeBaseEdit.setText(Prefs.DEFAULT_JUDGE_BASE_TYPESAFE)
                     judgeModelEdit.setText(Prefs.DEFAULT_JUDGE_MODEL_TYPESAFE)
+                }
+                3 -> {
+                    judgeBaseEdit.setText(Prefs.DEFAULT_JUDGE_BASE_VERCEL)
+                    judgeModelEdit.setText(Prefs.DEFAULT_JUDGE_MODEL_VERCEL)
+                }
+                4 -> {
+                    judgeBaseEdit.setText(Prefs.DEFAULT_JUDGE_BASE_ZEN)
+                    judgeModelEdit.setText(Prefs.DEFAULT_JUDGE_MODEL_ZEN)
                 }
                 // Custom POSTs the box verbatim, so a preset HOST left in the box
                 // would hit the API root. Expand it into the full endpoint the
                 // preset would have used; anything hand-typed is left alone.
-                2 -> judgeBaseEdit.setText(expandJudgeUrl(judgeBaseEdit.text.toString()))
+                5 -> judgeBaseEdit.setText(expandJudgeUrl(judgeBaseEdit.text.toString()))
             }
+            bochaBox.visibility = if (idx == 1) View.VISIBLE else View.GONE
         })
         judgeCard.addView(label("Base URL"))
         judgeCard.addView(judgeBaseEdit)
-        judgeCard.addView(text("OpenRouter uses /alpha/decisions; TypeSafe uses /v1/systemone; custom URLs are posted as entered.",
+        judgeCard.addView(text("OpenRouter uses /alpha/decisions; Bocha, TypeSafe, Vercel and OpenCode Zen use /v1/systemone. Custom URLs are posted as entered. Use the provider's own API key.",
             11f, sub))
+        judgeCard.addView(bochaBox)
         judgeCard.addView(label("API key"))
         judgeCard.addView(edit(prefs.judgeKey, "sk-...", password = true).also { judgeKeyEdit = it })
         judgeCard.addView(label("Model"))
@@ -277,7 +324,7 @@ class SettingsActivity : AppCompatActivity() {
         // --- OCR fallback---
         val ocrFallbackRow = toggleRow("Use OCR when the accessibility tree has no message text", prefs.ocrFallback)
         card2.addView(ocrFallbackRow)
-        card2.addView(text("Lark draws message text and WeChat may hide it; screenshot OCR runs locally and does not upload the image.", 11f, sub))
+        card2.addView(text("Lark draws message text, so screenshot OCR runs locally when its text cannot be read. Images are not uploaded for local OCR.", 11f, sub))
         val ocrAutoRow = toggleRow("Analyze automatically in OCR mode", prefs.ocrAutoAnalyze)
         card2.addView(ocrAutoRow)
         card2.addView(text("When off, OCR only shows the bubble; tap it to analyze.", 11f, sub))
@@ -342,6 +389,17 @@ class SettingsActivity : AppCompatActivity() {
         card3.addView(seek)
         root.addView(card3)
 
+        // =================== About and privacy ===================
+        root.addView(section("About and privacy"))
+        val aboutCard = card()
+        aboutCard.addView(text(
+            "This app reads the current chat and sends its text to the model APIs you configure for analysis and reply drafting. The author does not operate an intermediary server.",
+            12f, sub))
+        aboutCard.addView(cardBtn("Privacy policy") { openUrl(PRIVACY_URL) })
+        aboutCard.addView(cardBtn("Source repository") { openUrl(REPO_URL) })
+        aboutCard.addView(text(versionLabel(), 11f, sub).apply { setPadding(0, dp(10), 0, dp(2)) })
+        root.addView(aboutCard)
+
         // =================== Save ===================
         root.addView(primaryBtn("Save all settings") {
             // Address wins over the pill: a preset HOST in the box means that
@@ -395,8 +453,11 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var visionKeyEdit: EditText
 
     private fun providerOf(idx: Int) = when (idx) {
-        1 -> Prefs.PROVIDER_TYPESAFE
-        2 -> Prefs.PROVIDER_CUSTOM
+        1 -> Prefs.PROVIDER_BOCHA
+        2 -> Prefs.PROVIDER_TYPESAFE
+        3 -> Prefs.PROVIDER_VERCEL
+        4 -> Prefs.PROVIDER_ZEN
+        5 -> Prefs.PROVIDER_CUSTOM
         else -> Prefs.PROVIDER_OPENROUTER
     }
 
@@ -408,25 +469,39 @@ class SettingsActivity : AppCompatActivity() {
      */
     private fun resolveJudgeProvider(idx: Int, base: String): String =
         when (base.trim().trimEnd('/')) {
+            Prefs.DEFAULT_JUDGE_BASE_BOCHA -> Prefs.PROVIDER_BOCHA
             Prefs.DEFAULT_JUDGE_BASE_OPENROUTER -> Prefs.PROVIDER_OPENROUTER
             Prefs.DEFAULT_JUDGE_BASE_TYPESAFE -> Prefs.PROVIDER_TYPESAFE
+            Prefs.DEFAULT_JUDGE_BASE_VERCEL -> Prefs.PROVIDER_VERCEL
+            Prefs.DEFAULT_JUDGE_BASE_ZEN -> Prefs.PROVIDER_ZEN
             else -> providerOf(idx)
         }
 
     /** The full endpoint a preset host would have been expanded to. */
     private fun expandJudgeUrl(base: String): String = when (base.trim().trimEnd('/')) {
+        Prefs.DEFAULT_JUDGE_BASE_BOCHA -> Prefs.DEFAULT_JUDGE_BASE_BOCHA + "/v1/systemone"
         Prefs.DEFAULT_JUDGE_BASE_OPENROUTER -> Prefs.DEFAULT_JUDGE_BASE_OPENROUTER + "/alpha/decisions"
         Prefs.DEFAULT_JUDGE_BASE_TYPESAFE -> Prefs.DEFAULT_JUDGE_BASE_TYPESAFE + "/v1/systemone"
+        Prefs.DEFAULT_JUDGE_BASE_VERCEL -> Prefs.DEFAULT_JUDGE_BASE_VERCEL + "/v1/systemone"
+        Prefs.DEFAULT_JUDGE_BASE_ZEN -> Prefs.DEFAULT_JUDGE_BASE_ZEN + "/v1/systemone"
         else -> base.trim()
     }
 
-    private fun defaultJudgeBase(provider: String): String =
-        if (provider == Prefs.PROVIDER_TYPESAFE) Prefs.DEFAULT_JUDGE_BASE_TYPESAFE
-        else Prefs.DEFAULT_JUDGE_BASE_OPENROUTER
+    private fun defaultJudgeBase(provider: String): String = when (provider) {
+        Prefs.PROVIDER_BOCHA -> Prefs.DEFAULT_JUDGE_BASE_BOCHA
+        Prefs.PROVIDER_TYPESAFE -> Prefs.DEFAULT_JUDGE_BASE_TYPESAFE
+        Prefs.PROVIDER_VERCEL -> Prefs.DEFAULT_JUDGE_BASE_VERCEL
+        Prefs.PROVIDER_ZEN -> Prefs.DEFAULT_JUDGE_BASE_ZEN
+        else -> Prefs.DEFAULT_JUDGE_BASE_OPENROUTER
+    }
 
-    private fun defaultJudgeModel(provider: String): String =
-        if (provider == Prefs.PROVIDER_TYPESAFE) Prefs.DEFAULT_JUDGE_MODEL_TYPESAFE
-        else Prefs.DEFAULT_JUDGE_MODEL_OPENROUTER
+    private fun defaultJudgeModel(provider: String): String = when (provider) {
+        Prefs.PROVIDER_BOCHA -> Prefs.DEFAULT_JUDGE_MODEL_BOCHA
+        Prefs.PROVIDER_TYPESAFE -> Prefs.DEFAULT_JUDGE_MODEL_TYPESAFE
+        Prefs.PROVIDER_VERCEL -> Prefs.DEFAULT_JUDGE_MODEL_VERCEL
+        Prefs.PROVIDER_ZEN -> Prefs.DEFAULT_JUDGE_MODEL_ZEN
+        else -> Prefs.DEFAULT_JUDGE_MODEL_OPENROUTER
+    }
 
     /**
      * A throwaway [Prefs] view carrying exactly what is in the boxes right now,
@@ -438,6 +513,25 @@ class SettingsActivity : AppCompatActivity() {
     private fun draftPrefs(scratchName: String, fill: Prefs.() -> Unit): Prefs {
         getSharedPreferences(scratchName, MODE_PRIVATE).edit().clear().commit()
         return Prefs(this, scratchName).apply(fill)
+    }
+
+    /** Opens an external link; swallows the failure with a toast rather than crashing. */
+    private fun openUrl(url: String) {
+        runCatching {
+            startActivity(
+                android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }.onFailure {
+            Toast.makeText(this, "Could not open browser", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun versionLabel(): String = try {
+        val pi = packageManager.getPackageInfo(packageName, 0)
+        "Version ${pi.versionName} (${pi.longVersionCode})"
+    } catch (e: Exception) {
+        "Version —"
     }
 
     /** 1x1 white JPEG for the vision smoke test, via the real encoder path. */
@@ -581,5 +675,7 @@ class SettingsActivity : AppCompatActivity() {
         private const val SCRATCH_REPLY = "jev_probe_scratch_reply"
         private const val SCRATCH_VISION = "jev_probe_scratch_vision"
 
+        private const val PRIVACY_URL = "https://chatjevs.com/privacy.html"
+        private const val REPO_URL = "https://github.com/jev-chat/jev-chat-jarvis"
     }
 }

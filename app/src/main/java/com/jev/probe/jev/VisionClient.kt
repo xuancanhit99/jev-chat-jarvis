@@ -33,8 +33,7 @@ class VisionClient(private val prefs: Prefs) {
      */
     fun extractDialog(imageBase64Jpeg: String): String = ask(
         imageBase64Jpeg,
-        "你是聊天截图转写助手。把图中聊天气泡按从上到下的顺序转写成文本，" +
-            "每行一条，格式 `我：正文` 或 `对方：正文`。只输出转写结果，不要解释。"
+        "You transcribe chat screenshots from top to bottom. Output one message per line using `Me: text` or `Other: text`. Output only the transcription."
     )
 
     /** Generic single-question call against the image (used by the settings test). */

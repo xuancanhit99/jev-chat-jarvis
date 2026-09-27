@@ -20,7 +20,7 @@ class Prefs(context: Context, prefsName: String = PREFS_MAIN) {
      * throwaway instances behind the settings test buttons and the KB self-check
      * have nothing to carry over, and used to print one migration line per tap.
      */
-    init { if (prefsName == PREFS_MAIN) migrateIfNeeded() }
+    init { if (prefsName == PREFS_MAIN) { migrateIfNeeded(); unseedBochaDefaultIfUnconfigured() } }
 
     /**
      * v1.2 -> v1.3: the single `openrouter_key` becomes the judge route's key.
@@ -40,9 +40,37 @@ class Prefs(context: Context, prefsName: String = PREFS_MAIN) {
         e.apply()
     }
 
+    /**
+     * Fresh install only: default the judge route to Bocha Jev (limited-time free).
+     * Runs ONLY when there is no judge config whatsoever — the provider key was
+     * never written AND both the current judge key and the legacy OpenRouter key
+     * are blank. Any existing or migrated user is left completely untouched, so an
+     * OpenRouter key can never be redirected to jev.bocha.cn. The [judgeProvider]
+     * getter default stays OpenRouter on purpose; this only seeds a truly new sp.
+     */
+    /**
+     * v1.4.0 seeded fresh installs to Bocha Jev; v1.4.1 restores OpenRouter as the
+     * default (Bocha stays available, now second in the list). Undo that earlier
+     * auto-seed exactly once, and only when the user never entered a key and never
+     * picked a provider by hand — a saved key, or any non-Bocha provider, means a
+     * real choice we must not touch. Fresh installs now get no seed at all: the
+     * getters already default to OpenRouter.
+     */
+    private fun unseedBochaDefaultIfUnconfigured() {
+        if (sp.getBoolean(K_UNSEEDED_BOCHA, false)) return
+        val e = sp.edit().putBoolean(K_UNSEEDED_BOCHA, true)
+        val prov = sp.getString(K_JUDGE_PROVIDER, null)
+        val key = sp.getString(K_JUDGE_KEY, "") ?: ""
+        if (prov == PROVIDER_BOCHA && key.isBlank()) {
+            e.remove(K_JUDGE_PROVIDER).remove(K_JUDGE_BASE).remove(K_JUDGE_MODEL)
+            Log.i(TAG, "prefs: reverted auto-seeded bocha default to openrouter")
+        }
+        e.apply()
+    }
+
     // ---------------------------------------------------------------- judge
 
-    /** "openrouter" | "typesafe" | "custom". */
+    /** "bocha" | "openrouter" | "typesafe" | "vercel" | "zen" | "custom". */
     var judgeProvider: String
         get() = sp.getString(K_JUDGE_PROVIDER, PROVIDER_OPENROUTER) ?: PROVIDER_OPENROUTER
         set(v) = sp.edit().putString(K_JUDGE_PROVIDER, v.trim()).apply()
@@ -197,7 +225,10 @@ class Prefs(context: Context, prefsName: String = PREFS_MAIN) {
     fun judgeEndpoint(): String {
         val base = judgeBaseUrl.trim().trimEnd('/')
         return when (judgeProvider) {
+            PROVIDER_BOCHA -> "$base/v1/systemone"    // same path as TypeSafe
             PROVIDER_TYPESAFE -> "$base/v1/systemone"
+            PROVIDER_VERCEL -> "$base/v1/systemone"   // TypeSafe-compatible gateway
+            PROVIDER_ZEN -> "$base/v1/systemone"      // TypeSafe-compatible gateway
             PROVIDER_CUSTOM -> judgeBaseUrl.trim()   // user supplies the full URL
             else -> "$base/alpha/decisions"
         }
@@ -230,6 +261,7 @@ class Prefs(context: Context, prefsName: String = PREFS_MAIN) {
 
         private const val K_LEGACY_KEY = "openrouter_key"
         private const val K_MIGRATED_V13 = "prefs_migrated_v13"
+        private const val K_UNSEEDED_BOCHA = "unseeded_bocha_v141"
         private const val K_JUDGE_PROVIDER = "judge_provider"
         private const val K_JUDGE_BASE = "judge_base_url"
         private const val K_JUDGE_KEY = "judge_key"
@@ -255,18 +287,33 @@ class Prefs(context: Context, prefsName: String = PREFS_MAIN) {
         private const val K_BUBBLE_X = "bubble_x"
         private const val K_AUTO = "auto_analyze"
 
+        const val PROVIDER_BOCHA = "bocha"
         const val PROVIDER_OPENROUTER = "openrouter"
         const val PROVIDER_TYPESAFE = "typesafe"
+        const val PROVIDER_VERCEL = "vercel"
+        const val PROVIDER_ZEN = "zen"
         const val PROVIDER_CUSTOM = "custom"
 
         const val OCR_MLKIT = "mlkit"
         const val OCR_VISION = "vision"
 
         // Judge route presets.
+        // Bocha Jev: same protocol/path as TypeSafe (/v1/systemone). Limited-time free.
+        const val DEFAULT_JUDGE_BASE_BOCHA = "https://jev.bocha.cn"
+        const val DEFAULT_JUDGE_MODEL_BOCHA = "bocha-jev-v1"
         const val DEFAULT_JUDGE_BASE_OPENROUTER = "https://openrouter.ai/api"
         const val DEFAULT_JUDGE_MODEL_OPENROUTER = "typesafe/jev-1.13"
         const val DEFAULT_JUDGE_BASE_TYPESAFE = "https://api.typesafe.ai"
         const val DEFAULT_JUDGE_MODEL_TYPESAFE = "jev-latest"
+        // Vercel AI Gateway's TypeSafe-compatible API. Same /v1/systemone body
+        // and noul answers as TypeSafe direct; model id is the gateway's.
+        const val DEFAULT_JUDGE_BASE_VERCEL = "https://ai-gateway.vercel.sh/typesafe"
+        const val DEFAULT_JUDGE_MODEL_VERCEL = "typesafe-ai/jev"
+        // OpenCode Zen's TypeSafe-compatible API. Same /v1/systemone body and
+        // noul answers; jev-1.13 is free on output ($0.042/M input, ~1k tokens
+        // per judgment), jev-1.13-free is fully free but capability-limited.
+        const val DEFAULT_JUDGE_BASE_ZEN = "https://opencode.ai/zen"
+        const val DEFAULT_JUDGE_MODEL_ZEN = "jev-1.13"
 
         // Reply route presets (OpenAI-compatible chat completions).
         const val DEFAULT_REPLY_BASE = "https://openrouter.ai/api/v1"

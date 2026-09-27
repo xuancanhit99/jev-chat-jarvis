@@ -310,7 +310,6 @@ class KnowledgeActivity : AppCompatActivity() {
     }
 
     private fun appLabel(pkg: String): String = when (pkg) {
-        "com.tencent.mm" -> "WeChat"
         "com.tencent.mobileqq" -> "QQ"
         "com.ss.android.lark" -> "Lark"
         "com.twitter.android" -> "X"

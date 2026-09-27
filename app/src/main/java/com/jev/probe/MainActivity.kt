@@ -14,6 +14,7 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.jev.probe.core.Prefs
 import kotlin.math.roundToInt
@@ -63,7 +64,7 @@ class MainActivity : AppCompatActivity() {
         container.removeAllViews()
 
         container.addView(text("Jev Chat Assistant", 24f, ink, bold = true))
-        container.addView(text("Read messages beside your chat apps (WeChat, QQ, X and Lark are supported), then show analysis and reply suggestions. You always send manually.",
+        container.addView(text("Read messages beside supported chat apps (QQ, X and Lark), then show analysis and reply suggestions. You always send manually.",
             13f, sub).apply { setPadding(0, dp(6), 0, dp(16)) })
 
         val a11y = isA11yEnabled()
@@ -73,6 +74,7 @@ class MainActivity : AppCompatActivity() {
 
         // Readiness card
         container.addView(statusCard(ready, a11y, overlay, key))
+        container.addView(privacyHint())
 
         // Permission checklist
         container.addView(sectionLabel("Permissions"))
@@ -123,6 +125,21 @@ class MainActivity : AppCompatActivity() {
             })
         }
         return c
+    }
+
+    /** One tappable line under the readiness card, opening the privacy policy page. */
+    private fun privacyHint(): View = text("Chat content is sent only to the model APIs you configure · Privacy policy", 11f, sub).apply {
+        setPadding(dp(2), dp(8), 0, 0)
+        setOnClickListener { openUrl(PRIVACY_URL) }
+    }
+
+    /** Opens an external link; swallows the failure with a toast rather than crashing. */
+    private fun openUrl(url: String) {
+        runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.onFailure {
+            Toast.makeText(this, "Could not open browser", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun checkLine(label: String, ok: Boolean, okWord: String = " enabled", noWord: String = " disabled"): View {
@@ -224,5 +241,9 @@ class MainActivity : AppCompatActivity() {
         val enabled = Settings.Secure.getString(contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
         return enabled.contains(a11yComponent)
+    }
+
+    companion object {
+        private const val PRIVACY_URL = "https://chatjevs.com/privacy.html"
     }
 }
