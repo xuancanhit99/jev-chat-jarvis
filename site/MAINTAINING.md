@@ -1,6 +1,6 @@
 # 维护说明
 
-chatjevs.com 是纯静态站：GitHub Pages 从 `jev-chat/jev-chat.github.io` 的 `main` 分支根目录直出，没有框架、没有构建步骤。合并到 `main` 就是上线。同一套页面另有两份拷贝（`jev-chat-jarvis` 仓库的 `site/` 目录和 `gh-pages` 分支），改完这里要同步过去。
+chatjevs.com 是纯静态站：GitHub Pages 从 `jev-chat/jev-chat.github.io` 的 `main` 分支根目录直出，没有框架，发布时无需构建；维护时需生成英文页和发现文件（见下文）。合并到 `main` 就是上线。同一套页面另有两份拷贝（`jev-chat-jarvis` 仓库的 `site/` 目录和 `gh-pages` 分支），改完这里要同步过去。
 
 ## 文件一览
 
@@ -8,12 +8,12 @@ chatjevs.com 是纯静态站：GitHub Pages 从 `jev-chat/jev-chat.github.io` �
 |---|---|
 | `index.html` | 首页结构。默认内容是中文，每段文案用 `data-i18n` 键对应字典 |
 | `i18n.js` | **首页文案的单一来源**：`zh`、`en` 两个字典 |
-| `main.js` | 行为：中英切换、主题、导航、复制、APK 链接、首屏演示、进场动效、Star 数。首页和隐私页共用 |
+| `main.js` | 行为：中英切换、主题、导航、复制、首屏演示、进场动效、Star 数。首页和隐私页共用 |
 | `style.css` | 样式。设计令牌在文件开头，浅色 / 深色两套；隐私页样式在文件末尾 |
 | `privacy.html` | 隐私政策。**只有中文**，不走字典；页底有英文摘要 `#en-summary` |
 | `tools/check-i18n.mjs` | 中英文案检查；`--fix` 把中文从字典写进 `index.html` |
 | `assets/` | `favicon.svg`、`apple-touch-icon.png`、`og.png`（1200×630）、`mp-qr.webp`（公众号二维码）（旧版截图 `overlay.webp`、`settings.webp` 已删除，见 DESIGN.md 决策 1） |
-| `download/` | 站内 APK。**文件名不要改**，App、README、外部文章可能直链 |
+| `download/` | 历史 APK。**文件名不要改或删除**，App、README、外部文章可能直链；官网页面不再提供直下入口 |
 | `CNAME`、`.nojekyll` | 域名 chatjevs.com 和关闭 Jekyll，**不要删** |
 | `DESIGN.md` | 设计说明：信息架构、视觉语言、为什么这么做、旧版内容去向 |
 
@@ -22,7 +22,8 @@ chatjevs.com 是纯静态站：GitHub Pages 从 `jev-chat/jev-chat.github.io` �
 1. 只改 `i18n.js`，中英两个字典一起改。
 2. 跑 `node tools/check-i18n.mjs --fix`：把中文写进 `index.html`（没有 JS 的访客、搜索引擎、社交平台抓取看到的就是这份中文）。
 3. 再跑一遍 `node tools/check-i18n.mjs`，看到「✓ 中英文案一致，没有缺键和孤儿键」再提交。
-4. 本地看一眼（见「本地预览」），中文、`?lang=en` 各看一遍。
+4. 跑 `node tools/build-discovery.mjs`，同步静态英文页、JSON-LD、sitemap、robots 和文本资料，再跑 `node tools/build-discovery.mjs --check` 检查没有过期产物。
+5. 本地看一眼（见「本地预览」），中文、`?lang=en` 各看一遍。
 
 检查脚本会拦下：HTML 里用了但字典里没有的键、中英字典键不一致、HTML 里的中文和字典不一致、字典里没人用的孤儿键、重复键、空值、`data-i18n` 嵌套。英文里混进汉字会给提醒（「切换到中文」「接口」「清空知识库与历史」这三处是故意的：App 界面是中文，英文用户要照着找按钮）。
 
@@ -67,31 +68,17 @@ grep -n 'src="/\|href="/' index.html privacy.html   # 本地资源必须是相�
 | 悬浮窗样式变化 | `style.css` 里「悬浮窗」一段（`.jp*`），颜色、字号照源码 |
 | 隐私政策改版 | 见下文「隐私政策」 |
 
-## 升版本号 / 换 APK
+## 版本号与产品获取入口
 
-**安卓新版本**（比如 v1.5）：
+**安卓新版本**：以主仓库已发布的 Release 为准更新 `index.html` 中三端卡片的 Android 版本、05 节 adb 文件名、收尾版本行（三端版本独立，JSON-LD 不使用统一 `softwareVersion`）；如包体大小变化，更新 `lim.8` 中英文案。下载文件及入口在主仓库 README 和 Release 维护，官网获取链接仍指向主仓库三端区。旧 `download/` 文件继续保留供既有外链使用。
 
-1. 把新 APK 放进 `download/`，文件名照旧规则：`jev-assistant-v1.5-release.apk`。旧包是否保留由作者定（保留可以避免旧链接 404）。
-2. 替换两个页面里所有的 `1.4`：
+**Windows / macOS 新版本**：确认正式发布页后，更新 05 节对应卡片和收尾版本行。官网仍只指向主仓库三端区，不直接分流到桌面仓库。
 
-   ```bash
-   grep -n 'v1\.4\|1\.4-release\|"1\.4"' index.html privacy.html     # 先看一眼，应该都是版本号
-   sed -i 's/jev-assistant-v1\.4-release/jev-assistant-v1.5-release/g; s/>v1\.4</>v1.5</g; s/"softwareVersion":"1\.4"/"softwareVersion":"1.5"/; s/下载 APK v1\.4/下载 APK v1.5/g; s/Android <span>v1\.4/Android <span>v1.5/' index.html privacy.html
-   grep -n 'v1\.4\|1\.4-release\|"1\.4"' index.html privacy.html     # 应当没有输出
-   ```
+**Star 兜底值**：`<b data-jev-stars>` 位于三端卡片后的支持提示。页面会实时拉 GitHub，拉不到才显示这个值；隔段时间按实际数更新静态兜底值。访客浏览器缓存 30 分钟（`localStorage` 的 `jev-gh`）。
 
-   涉及的位置：所有 `data-jev-apk` 链接、按钮里的 `.btn-ver`、04 节 Android 的 `.ver`、05 节的 adb 命令、收尾色带版本行、JSON-LD 的 `softwareVersion`、页脚「下载 APK v1.4」。
-3. 包体大小变了就改 `hero.meta` 和 `lim.8`（中英各一处）。
-4. 有新功能、新限制，按上一节改。
+**缓存版本号**：改了 `style.css`、`main.js`、`i18n.js` 任意一个，把 `index.html` 和 `privacy.html` 里的资源查询参数一起改成新的日期与字母，否则回访用户会拿到旧文件。
 
-**Windows / macOS 新版本**：`grep -n "0\.1\.11\|0\.6\.0" index.html`，改 04 节两张卡和收尾色带版本行。描述照线上现有写法，不照搬它们 README 里的平台名。
-
-**Star 兜底值**：`<b data-jev-stars>`（首页导航、首屏、收尾三处，隐私页导航一处）。页面会实时拉 GitHub，拉不到才显示这个值；隔段时间改成当时的真实数（千位保留一位小数，如 6.7k）。访客浏览器缓存 30 分钟（`localStorage` 的 `jev-gh`）。
-
-**缓存版本号**：改了 `style.css`、`main.js`、`i18n.js` 任意一个，把 `index.html` 和 `privacy.html` 里的 `?v=20260927r` 一起改成新的（日期 + 字母），否则回访用户会拿到旧文件。
-
-**APK 链接的规则**：页面里写站内相对路径 `download/…apk`。`main.js` 第 4 段发现页面不在 chatjevs.com、localhost、127.0.0.1 上（比如 `jev-chat-jarvis` 仓库的 `site/` 或 gh-pages 拷贝），会把链接换成 `https://github.com/jev-chat/jev-chat-jarvis/raw/main/apk/<同名文件>`。所以 App 仓库 `apk/` 目录里要有同名文件。
-
+**入口规则**：所有产品获取、安装教程、交流与更新入口的静态 `href` 统一指向 `https://github.com/jev-chat/jev-chat-jarvis`，不带 README 章节锚点；用户先进入仓库首页，再在 GitHub 内分流。Android、Windows、macOS 卡片同级显示。隐私政策、许可、Issue 和更新日志按自身用途保留原链接。不要恢复 `data-jev-apk`、`download-apk` 或跨域 APK 改写脚本。
 ## 隐私政策（privacy.html）
 
 - 正文来自 App 仓库的 `PRIVACY.md`，App 设置页「隐私政策」按钮直链 `https://chatjevs.com/privacy.html`，**路径不能变**。
@@ -117,18 +104,17 @@ grep -n 'src="/\|href="/' index.html privacy.html   # 本地资源必须是相�
 
 | 事件 | 触发 | 附带属性 |
 |---|---|---|
-| `download-apk` | 点任一下载 APK | `pos`：nav / hero / apps / start / closing / footer / privacy-nav / privacy-footer |
-| `click-star` | 点 Star 按钮或 Star 引导 | `pos`：nav / hero / start / closing / privacy-nav |
-| `click-github` | 点页脚 GitHub、更新日志 | `pos`：footer / footer-changelog / privacy-footer / privacy-footer-changelog |
-| `click-issues` | 点提 Issue | `pos`：start / faq / contact / footer / privacy-footer |
-| `click-readme` | 点 README、交流群 | `pos`：contact / footer / footer-group / privacy-footer / privacy-footer-group |
+| `go-main-repo` | 点主仓库获取、教程或交流入口 | `pos`：入口位置；`intent`：get / android / windows / macos / tutorial / community。改版前的 `download-apk` 和 `click-star` 保留历史含义，不与新事件直接比较 |
+| `click-github` | 点更新日志 | `pos`：footer-changelog / privacy-footer-changelog |
+| `click-issues` | 点提 Issue | `pos`：faq / contact / footer / privacy-footer |
 | `view-privacy` | 点隐私政策 | `pos`：privacy / faq / footer / footer-legal |
-| `click-sister` | 点 Windows / macOS 姊妹项目 | `project`：windows / macos / windows-src / macos-src；`pos`：hero / apps / faq / footer / privacy-footer |
 | `copy-adb` | 点复制 adb 命令 | — |
 | `toggle-lang` | 点 中 / EN | `to`：zh / en |
 | `toggle-theme` | 点深浅色 | `to`：light / dark |
 | `demo-control` | 首屏演示暂停、播放、点某一步 | `action`：pause / play / step-1…step-4 |
 | `privacy-en-summary` | 隐私页顶栏点 English | — |
+
+`go-main-repo` 只代表从官网点击进入主仓库，不代表实际 Star、下载或安装。Star 增长要另看仓库每日净增，并记录推广和流量来源变化。
 
 注意：Umami 对站内链接（不是 `target="_blank"`）会先拦下点击、上报完再跳转。首屏演示的步骤按钮是 `<button>`，不受影响。
 
@@ -144,7 +130,7 @@ python -m http.server 8821 --bind 127.0.0.1
 node tools/check-i18n.mjs
 ```
 
-上线前至少看：1440 宽和 375 宽、浅色和深色、中文和英文；375 宽下 `document.documentElement.scrollWidth` 应当等于 375；控制台没有报错；关掉 JS、打开「减弱动态效果」时内容完整可见（演示停在收尾状态）；手机首屏能看到下载按钮。
+上线前至少看：1440 宽和 375 宽、浅色和深色、中文和英文；375 宽下 `document.documentElement.scrollWidth` 应当等于 375；控制台没有报错；关掉 JS、打开「减弱动态效果」时内容完整可见（演示停在收尾状态）；手机首屏能看到 GitHub 获取按钮，三端卡片均直接展开且同级。再核对导流入口均直达仓库首页且不带章节锚点，以及 Umami 是否收到新事件。
 
 ## 英文用词
 
@@ -173,3 +159,49 @@ node tools/check-i18n.mjs
 | 非侵入 | non-invasive | |
 | 知识库与关联上下文 | notes and contact context | 问答里也写 knowledge base，两种说法都指同一个功能 |
 | 姊妹项目 | sister projects | |
+
+## 首次访问语言
+
+首页按以下顺序决定语言：有效的 `?lang=zh/en` → `/en.html` 固定英文入口 → 用户手动保存的选择 → 浏览器首选语言（中文显示中文，其余显示英文）。语言不符时导航到相应静态页；手动按钮保存选择并保留分享参数与章节。
+
+公众号可以分享 `https://chatjevs.com/?lang=zh`，英文渠道可以分享 `https://chatjevs.com/?lang=en`。无参数链接自动适配。检测逻辑位于首页 head，main.js 复用其结果，避免首屏语言不一致。不依赖 IP、地区或来源网站。隐私政策仍保留中文全文与英文摘要；首页英文入口直达英文摘要。
+
+
+## 搜索与 AI 搜索维护（2026-09-30）
+
+- 中文页面 `/`，英文页面 `/en.html`：都包含完整静态正文、各自 canonical、互相对应的 hreflang、OG 和与可见正文一致的 JSON-LD。英文页由字典生成，不手改。
+- 保留旧 `?lang=zh/en` 分享链接。启用 JS 时导航到对应静态页面；无 JS 的英文入口使用 `/en.html`。页脚语言链接在无 JS 时也可用。
+- 常见问题有稳定的 `#faq-q1` 等锚点，可直接分享某一问题。
+- `facts.*` 是产品定位、使用范围、费用和来源的文案来源；`llms.txt` 从同一份文案生成。它是方便读取的文本索引，不是搜索收录或 AI 推荐的保证。
+- `robots.txt` 允许公开页面抓取，明确列出 OAI-SearchBot / PerplexityBot。两站此前没有 robots.txt，本次保留默认可抓取状态；搜索爬虫和模型训练爬虫用途不同。
+- `sitemap.xml` 只列本站规范页面，不填猜测的修改日期；保留自引用及双向 hreflang。镜像使用官方域名 canonical，不生成镜像域名版本。
+- 不写虚构评分、评价、用户数或背书；不添加仅供机器看到的功能承诺。Jev 三端版本各自维护，不能用 Android 版本号代表三端，也不能把 Android 的许可/权限说明概括成所有平台相同。
+
+维护命令：
+
+```bash
+node tools/check-i18n.mjs --fix
+node tools/build-guides.mjs
+node tools/build-guides.mjs --check
+node tools/build-discovery.mjs
+node tools/build-discovery.mjs --check
+node --check main.js
+git diff --check
+```
+
+上线前检查两种语言、375 / 1440 宽度、浅深色、禁用 JS、语言切换和隐私链接。确认 sitemap 内页面返回 200，robots 不屏蔽正文，线上文件与提交一致。
+
+效果验证：在已有的 Search Console / Bing Webmaster Tools 中提交 sitemap，查看实际抓取/索引与 AI 搜索表现；Umami 的 AI 来源访问与 GitHub 入口点击只说明访问和点击，不能当作被 AI 推荐的次数或下载数。不要为了提交 sitemap 采用已废弃的匿名 ping 接口。账号验证与后续表现以平台真实记录为准。
+
+依据：[Google AI 搜索指南](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide)、[OpenAI 爬虫说明](https://developers.openai.com/api/docs/bots)、[Perplexity 爬虫说明](https://docs.perplexity.ai/docs/resources/perplexity-crawlers)。
+
+
+## 教程与主动通知收录
+
+`content/guides.json` 保存中英文教程正文、来源和真实发布日期；`tools/build-guides.mjs` 生成 `guides/*.html`。更新正文时同步中英文，并更新对应文章的 updated 日期。不要改动日期来制造内容新鲜度。
+
+生成命令为 `node tools/build-guides.mjs`，检查用 `--check`。教程由首页「从这里开始用」链接，并由 build-discovery 加入 sitemap 和 llms.txt。`guide.css` 是教程样式。BrewReel 的可下载 Markdown 位于 downloads/。
+
+`indexnow-key.txt` 是 IndexNow 协议要求放在网站公开根目录的所有权证明，不能用真实 API 密钥替代。上线后先跑 `node tools/submit-indexnow.mjs` 预览 URL；带 `--submit` 才会验证线上证明文件与页面，再向 IndexNow 提交本站 sitemap 中的 URL。200 表示收到通知，202 表示收到且待验证；两者都不代表页面已经收录。仅在发布实质修改后提交，不定时重复刷提交。
+
+教程访问记为 read-guide，BrewReel 模板下载点击记为 download-brief-template / download-brief-example；这些是点击事件，不是下载完成、安装或转化。教程进入 GitHub 的事件保留现有事件名与独立位置属性。

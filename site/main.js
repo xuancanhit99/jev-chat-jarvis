@@ -1,8 +1,8 @@
 /* Jev 聊天助手官网脚本
- * 中英切换 / 主题 / 导航 / 复制 / APK 链接 / 首屏演示 / 进场动效 / Star 数
+ * 中英切换 / 主题 / 导航 / 复制 / 首屏演示 / 进场动效 / Star 数
  * 文案全部在 i18n.js；这里用 t("key") 取，check-i18n.mjs 会扫描这些键。
  * 页面不依赖本脚本也能完整阅读：没有 JS 时演示停在收尾状态，内容全部可见。
- * privacy.html 也用这个脚本，但不加载 i18n.js：那里只有主题、导航、APK 链接和 Star 数。
+ * privacy.html 也用这个脚本，但不加载 i18n.js：那里只有主题、导航和 Star 数。
  */
 (function () {
   "use strict";
@@ -55,20 +55,19 @@
     onLang.forEach(function (fn) { fn(); });
   }
 
-  var q = /[?&]lang=(en|zh)\b/.exec(location.search);
-  var initial = I18N ? (q ? q[1] : (load(LANG_KEY) === "en" ? "en" : "zh")) : "zh";
-
+  // 首页 head 已决定语言；共用这次判定，确保首屏标记和正文一致。
+  var initial = root.getAttribute("lang") === "en" ? "en" : "zh";
   var langBtn = $("#langBtn");
   if (langBtn && I18N) {
     langBtn.addEventListener("click", function () {
       var next = lang === "en" ? "zh" : "en";
-      applyLang(next);
       save(LANG_KEY, next);
       track("toggle-lang", { to: next });
-      if (/[?&]lang=/.test(location.search) && window.history && history.replaceState) {
-        var url = location.pathname + location.search.replace(/([?&]lang=)(en|zh)/, "$1" + next) + location.hash;
-        history.replaceState(null, "", url);
-      }
+      var url = new URL(next === "en" ? "en.html" : "./", location.href);
+      url.search = location.search;
+      url.searchParams.set("lang", next);
+      url.hash = location.hash;
+      location.assign(url.href);
     });
   }
 
@@ -125,18 +124,7 @@
     Object.keys(byId).forEach(function (id) { var s = document.getElementById(id); if (s) spy.observe(s); });
   }
 
-  /* ---------- 4. APK 链接：chatjevs.com 和本地预览用站内 download/；其它拷贝（仓库 site/、gh-pages）换成 GitHub 原始文件 ---------- */
-  (function () {
-    var h = location.hostname;
-    var local = /(^|\.)chatjevs\.com$/.test(h) || h === "localhost" || h === "127.0.0.1" || h === "" || location.protocol === "file:";
-    if (local) return;
-    $$("[data-jev-apk]").forEach(function (a) {
-      var m = /download\/([^/?#]+\.apk)$/.exec(a.getAttribute("href") || "");
-      if (m) a.setAttribute("href", "https://github.com/" + REPO + "/raw/main/apk/" + m[1]);
-    });
-  })();
-
-  /* ---------- 5. 复制 ---------- */
+  /* ---------- 4. 复制 ---------- */
   function legacyCopy(text) {
     try {
       var ta = document.createElement("textarea");
