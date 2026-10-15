@@ -325,7 +325,10 @@ open class ChatCaptureService : AccessibilityService() {
                     main.postDelayed(confirmAwayHide, FOREGROUND_CONFIRM_MS)
                 } else {
                     main.removeCallbacks(confirmAwayHide)
-                    overlay?.showIdle(null)
+                    // A manual OCR snapshot is a live conversation until the
+                    // target changes (which clears currentSnapshot above).
+                    // Overlay/window events must not hide its pending/results card.
+                    overlay?.showIdle(currentSnapshot?.title)
                 }
                 return
             }

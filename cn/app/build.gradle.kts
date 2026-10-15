@@ -23,8 +23,8 @@ android {
         applicationId = "com.jev.probe.custom"
         minSdk = 30
         targetSdk = 35
-        versionCode = 10007
-        versionName = "1.7-custom"
+        versionCode = 10008
+        versionName = "1.7-custom.1"
 
         // ML Kit's bundled Chinese recognizer ships native libs for every ABI.
         // The target phone (and every phone this can run on: minSdk 30) is

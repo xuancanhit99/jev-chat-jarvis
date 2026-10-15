@@ -1,6 +1,8 @@
 # Custom Android build
 
-This fork's `feature/i18n-custom` branch keeps an English UI on the upstream Android app in `cn/`, with replies in the incoming message's language, including Vietnamese. The application ID is `com.jev.probe.custom`, so it can coexist with the original app. Current custom version: `1.7-custom` (10007).
+This fork's `feature/i18n-custom` branch keeps an English UI on the upstream Android app in `cn/`, with replies in the incoming message's language, including Vietnamese. The application ID is `com.jev.probe.custom`, so it can coexist with the original app. Current custom version: `1.7-custom.1` (10008).
+
+The custom patch keeps a manual OCR result card visible through window events in apps without a dedicated adapter. Changing the target conversation still clears the previous snapshot.
 
 ## Build
 
