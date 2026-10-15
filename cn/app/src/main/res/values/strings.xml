@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Jev Assistant</string>
+    <string name="a11y_desc">Reads text from the current chat to suggest replies. Never sends messages automatically.</string>
+</resources>
